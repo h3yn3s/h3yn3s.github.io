@@ -288,7 +288,7 @@ var achievements = [
   [0,function(){ return cash < 0 },"Negativ, Sir.","You got your moneys into the negatives. Congratz."],
   [0,function(){ return collectorLevel > 9 },"Raise dem IQ","Send your workers to school 10 times."],
   [0,function(){ return collectorLevel > 99 },"Clever Workers","100 of upgrades for your collectors."],
-  [0,function(){ return cash > 99 && cash == totalCash },"Clicker Nerd","Getting money before buying anything?"],
+  [0,function(){ return (cash > 99 && cash == totalCash) },"Clicker Nerd","Getting money before buying anything?"],
   //[0,function(){ return "___your_expressions___" },"Text","title"],
   //[0,function(){ return "___your_expressions___" },"Text","title"],
   //[0,function(){ return "___your_expressions___" },"Text","title"],
