@@ -21,6 +21,7 @@ var dept = 0;
 var baseInterest = 0.05;
 var loanAmount = 500;
 
+
 $(document).ready(function() {
 
   btn_cash = $("#btn_cash");
