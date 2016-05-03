@@ -1,0 +1,8 @@
+deploy:
+  provider: heroku
+  api_key:
+    secure: jlkB1gDoNPp4ur48ARXdMZ71kTS3GDL2Q/u8NhHbHw2MMV5mu8EWvqmRQgWOkRz4XnayyFuYs6Bl1S8rfuasUVdJ7zRexecN2GWTM55G+xtoWNl+DTb79Qt/ENXMp9I2LC+TuD2D3E3fzY98ayUXYg7LkgaUqSxhrGTW3CIS+qasTMEs36Ie28+BNLQE86mgdvsdrwvKtVesXdDNT+fA2EqoINN+uN0h/YqSUeEHkqHnhv6rSTfhP2fUMYcMXksQCgrUvzd/M0eqJ9/OavHptxKQHRTr0aqM09EKCyq8t+F5k2v5Z9xQetI23c6m/2PUL0frI7Mk91lGbue07DiXhnwT7cEaVYuYx0cfgSWtdC3qhszFiY9s/vpwO5Ia3odCAB8LzlmYSLxy/4CYhsBGAipA+Lc7HYFUAsPD2I7GnEjHgctbzGpqEmjKy5MajvI0SZypMJtp4b+I79LpIUStJEM7JlUXRjIH+H7c81zSdOZL/wKqfc/dO3pPb9FHKx+IZdbRE3LCGSh1s3de5KqyiGEAHJhfAp3P9i9LhgI8DjpcWYblo53Su5eO/76XvOR6j6tSQ2EzcR5M7sCveH5efUsbwdI1G0GvJfQ0V7xVL46UmlOiAwUS0VxkWkA6HPfrx338Gje3C559T8r18ixR5w0QyKOm4f2uKuvcHW1qYvg=
+  app: h3yn3s
+  on:
+    repo: h3yn3s/h3yn3s.github.io
+    branch: develop
