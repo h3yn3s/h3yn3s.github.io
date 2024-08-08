@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Countdown to October 21st, 2024</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #282c34;
+            color: white;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            flex-direction: column;
+        }
+        #title {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        #countdown {
+            font-size: 3em;
+            text-align: center;
+        }
+        .progress-container {
+            width: 80%;
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            position: relative;
+        }
+        .progress-bar {
+            height: 10px;
+            background-color: #61dafb;
+            border-radius: 5px;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            margin: auto;
+        }
+        .progress-background {
+            width: 100%;
+            height: 10px;
+            background-color: #282c34;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="title">Factorio: Space Age Release</div>
+    <div id="countdown"></div>
+    <div class="progress-container">
+        <div class="progress-background">
+            <div id="progress-day" class="progress-bar"></div>
+        </div>
+    </div>
+    <div class="progress-container">
+        <div class="progress-background">
+            <div id="progress-hour" class="progress-bar"></div>
+        </div>
+    </div>
+    <div class="progress-container">
+        <div class="progress-background">
+            <div id="progress-minute" class="progress-bar"></div>
+        </div>
+    </div>
+    <div class="progress-container">
+        <div class="progress-background">
+            <div id="progress-second" class="progress-bar"></div>
+        </div>
+    </div>
+
+    <script>
+        function updateCountdown() {
+            const now = new Date().getTime();
+            const targetDate = new Date('October 21, 2024 00:00:00').getTime();
+            const distance = targetDate - now;
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = String(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, '0');
+            const minutes = String(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+            const seconds = String(Math.floor((distance % (1000 * 60)) / 1000)).padStart(2, '0');
+            const milliseconds = String(Math.floor((distance % 1000) / 10)).padStart(2, '0');
+
+            const countdownText = `${days}d ${hours}h ${minutes}m ${seconds}s ${milliseconds}ms`;
+            document.getElementById('countdown').innerHTML = countdownText;
+            document.title = countdownText;
+
+            // Calculate the progress bar width for each unit of time
+            const dayProgress = (now % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60 * 24);
+            const hourProgress = (now % (1000 * 60 * 60)) / (1000 * 60 * 60);
+            const minuteProgress = (now % (1000 * 60)) / (1000 * 60);
+            const secondProgress = (now % 1000) / 1000;
+
+            document.getElementById('progress-day').style.width = (1 - dayProgress) * 100 + '%';
+            document.getElementById('progress-day').style.left = (dayProgress * 50) + '%';
+            document.getElementById('progress-hour').style.width = (1 - hourProgress) * 100 + '%';
+            document.getElementById('progress-hour').style.left = (hourProgress * 50) + '%';
+            document.getElementById('progress-minute').style.width = (1 - minuteProgress) * 100 + '%';
+            document.getElementById('progress-minute').style.left = (minuteProgress * 50) + '%';
+            document.getElementById('progress-second').style.width = (1 - secondProgress) * 100 + '%';
+            document.getElementById('progress-second').style.left = (secondProgress * 50) + '%';
+
+            if (distance < 0) {
+                clearInterval(countdownInterval);
+                document.getElementById('countdown').innerHTML = "Time's up!";
+                document.title = "Time's up!";
+                document.getElementById('progress-day').style.width = '0%';
+                document.getElementById('progress-hour').style.width = '0%';
+                document.getElementById('progress-minute').style.width = '0%';
+                document.getElementById('progress-second').style.width = '0%';
+            } else {
+                // Schedule next update only after this one is done
+                requestAnimationFrame(updateCountdown);
+            }
+        }
+
+        requestAnimationFrame(updateCountdown);
+    </script>
+</body>
+</html>
