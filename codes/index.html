@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>4-Char Code Copier</title>
+  <style>
+    :root { --bg:#0b1220; --card:#121a2b; --text:#e6edf7; --muted:#8aa0c3; --accent:#38bdf8; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
+      background: var(--bg); color: var(--text); display: grid; min-height: 100dvh; place-items: center; padding: 24px;
+    }
+    .wrap { width: 100%; max-width: 380px; background: var(--card); border-radius: 16px; padding: 20px; }
+    h1 { margin: 0 0 8px; font-size: 1.25rem; }
+    p { margin: 0 0 14px; color: var(--muted); font-size: .95rem; }
+    .code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 2rem; letter-spacing: .6px; background: #0e172a; border: 1px solid rgba(255,255,255,.06);
+      padding: 14px; border-radius: 12px; text-align: center; user-select: all; min-height: 2.8rem;
+    }
+    button {
+      width: 100%; margin-top: 12px; appearance: none; border: none; cursor: pointer; border-radius: 12px;
+      padding: 12px 16px; font-weight: 700; background: var(--accent); color:#071425; box-shadow: 0 8px 24px rgba(56,189,248,.35);
+    }
+    .toast {
+      position: fixed; inset-inline: 0; bottom: 18px; display: grid; place-items: center; pointer-events: none;
+      opacity: 0; transform: translateY(8px); transition: all .25s ease;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast > div {
+      background: rgba(22, 163, 74, .14); color: #bbf7d0; border: 1px solid rgba(134, 239, 172, .25);
+      padding: 10px 14px; border-radius: 12px; font-weight: 600; backdrop-filter: blur(6px);
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>4-Char Code</h1>
+    <p>Tap the button. Code is copied (or at least selected for long-press → Copy) every time.</p>
+    <div id="code" class="code" aria-live="polite">—</div>
+    <button id="go">Copy new code</button>
+  </main>
+
+  <div class="toast" id="toast"><div>Copied to clipboard</div></div>
+
+  <script>
+    (function () {
+      const codeEl = document.getElementById('code');
+      const btn = document.getElementById('go');
+      const toast = document.getElementById('toast');
+
+      const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+      function generate(len = 4) {
+        const out = [];
+        const useCrypto = (window.crypto && crypto.getRandomValues);
+        if (useCrypto) {
+          const idx = new Uint32Array(len);
+          crypto.getRandomValues(idx);
+          for (let i = 0; i < len; i++) out.push(CHARS[idx[i] % CHARS.length]);
+        } else {
+          for (let i = 0; i < len; i++) out.push(CHARS[Math.floor(Math.random() * CHARS.length)]);
+        }
+        return out.join('');
+      }
+
+      function showToast(msg) {
+        toast.firstElementChild.textContent = msg || "Copied to clipboard";
+        toast.classList.add('show');
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(() => toast.classList.remove('show'), 1200);
+      }
+
+      // Robust copy with multiple fallbacks for file:// and iOS Safari
+      async function copyText(text) {
+        // 1) Modern async clipboard (works only in secure contexts, i.e., https:)
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function' && window.isSecureContext) {
+          try {
+            await navigator.clipboard.writeText(text);
+            return true;
+          } catch (_) { /* fall through */ }
+        }
+
+        // 2) Hidden textarea method
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          ta.style.pointerEvents = 'none';
+          ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          ta.setSelectionRange(0, text.length);
+          const ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          if (ok) return true;
+        } catch (_) { /* fall through */ }
+
+        // 3) Contenteditable selection (helps some Safari variants)
+        try {
+          const prevCE = codeEl.getAttribute('contenteditable');
+          codeEl.setAttribute('contenteditable', 'true');
+          const range = document.createRange();
+          range.selectNodeContents(codeEl);
+          const sel = window.getSelection();
+          sel.removeAllRanges(); sel.addRange(range);
+          const ok2 = document.execCommand('copy');
+          sel.removeAllRanges();
+          if (prevCE === null) codeEl.removeAttribute('contenteditable'); else codeEl.setAttribute('contenteditable', prevCE);
+          if (ok2) return true;
+        } catch (_) { /* fall through */ }
+
+        // 4) Give up: leave text selected to allow long-press → Copy
+        try {
+          const range = document.createRange();
+          range.selectNodeContents(codeEl);
+          const sel = window.getSelection();
+          sel.removeAllRanges(); sel.addRange(range);
+        } catch (_) {}
+        return false;
+      }
+
+      async function go() {
+        const c = generate(4);
+        codeEl.textContent = c;
+        const ok = await copyText(c);
+        showToast(ok ? "Copied to clipboard" : "Long-press the code to copy");
+      }
+
+      // Initial code (not copied automatically)
+      codeEl.textContent = generate(4);
+      btn.addEventListener('click', go);
+    })();
+  </script>
+</body>
+</html>
