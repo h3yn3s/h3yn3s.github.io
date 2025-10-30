@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Real‑Time Money Growth Visualizer</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --card: #131b2e;
+      --muted: #9fb1d1;
+      --text: #e6eefc;
+      --accent: #5fd37a;
+      --accent-2: #7aa2ff;
+      --danger: #ff6b6b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 10% -10%, #132042 0%, var(--bg) 40%), var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: grid;
+      place-items: start center;
+      padding: 24px;
+    }
+    .wrap {
+      width: min(980px, 92vw);
+      display: grid;
+      gap: 16px;
+    }
+    .card {
+      background: linear-gradient(180deg, #162341, #0f1830);
+      border: 1px solid #243157;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
+      padding: 16px;
+    }
+    h1 {
+      font-size: clamp(20px, 3vw, 28px);
+      letter-spacing: .2px;
+      margin: 0 0 8px 0;
+    }
+    p.topnote { margin: 0; color: var(--muted); font-size: 14px; }
+    .grid { display: grid; gap: 12px; }
+    @media (min-width: 880px) {
+      .grid.inputs { grid-template-columns: repeat(4, 1fr); align-items: end; }
+    }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      background: #0c1430;
+      border: 1px solid #263460;
+      color: var(--text);
+      border-radius: 10px;
+      outline: none;
+    }
+    input:focus, select:focus { border-color: var(--accent-2); box-shadow: 0 0 0 3px rgba(122,162,255,.18); }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    button {
+      appearance: none;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid #2a3b6f;
+      background: linear-gradient(180deg, #22305b, #1a2547);
+      color: var(--text);
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    button.primary { border-color: #3a6b52; background: linear-gradient(180deg, #2b6f47, #234f39); }
+    button.danger { border-color: #6b3a3a; background: linear-gradient(180deg, #6f2b2b, #4f2323); }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+
+    .display {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 16px;
+    }
+    @media (max-width: 760px) { .display { grid-template-columns: 1fr; } }
+
+    .big {
+      font-variant-numeric: tabular-nums; 
+      font-size: clamp(28px, 5vw, 44px);
+      font-weight: 800;
+      letter-spacing: .5px;
+    }
+    .subgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .kpi { background: #0d1533; border: 1px solid #273467; border-radius: 12px; padding: 12px; }
+    .kpi .label { color: var(--muted); font-size: 12px; }
+    .kpi .value { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 18px; }
+
+    canvas { width: 100%; height: 240px; background: #0a1128; border: 1px solid #243157; border-radius: 12px; }
+    footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 6px; }
+    .badge { display:inline-block; font-size:12px; padding: 3px 8px; border:1px solid #2b3a6d; border-radius:999px; margin-left: 8px; background:#12204a; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>⛵ Real‑Time Money Growth Visualizer <span class="badge">continuous compounding</span></h1>
+      <p class="topnote">Watch your balance grow in real time. Enter your starting capital and annual interest rate. The amount updates every tick (default 200ms). Perfect for teaching kids how compounding “works while you sleep”.</p>
+    </div>
+
+    <div class="card grid inputs">
+      <div>
+        <label for="principal">Initial Capital (€)</label>
+        <input id="principal" type="number" min="0" step="0.01" value="1000" />
+      </div>
+      <div>
+        <label for="rate">Annual Interest Rate (% per year)</label>
+        <input id="rate" type="number" step="0.01" value="5" />
+      </div>
+      <div>
+        <label for="tick">Tick Rate (ms)</label>
+        <input id="tick" type="number" min="50" step="50" value="200" />
+      </div>
+      <div>
+        <label for="decimals">Decimals to Display</label>
+        <select id="decimals">
+          <option value="0">0</option>
+          <option value="2" selected>2</option>
+          <option value="4">4</option>
+          <option value="6">6</option>
+          <option value="8">8</option>
+        </select>
+      </div>
+      <div class="btn-row" style="grid-column: 1 / -1;">
+        <button id="startBtn" class="primary">▶ Start</button>
+        <button id="pauseBtn">⏸ Pause</button>
+        <button id="resetBtn" class="danger">⟲ Reset</button>
+      </div>
+    </div>
+
+    <div class="display">
+      <div class="card">
+        <div class="big" id="amount">€ 1,000.00</div>
+        <div class="subgrid" style="margin-top: 12px;">
+          <div class="kpi">
+            <div class="label">Interest Earned</div>
+            <div class="value" id="earned">€ 0.00</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Instant Earnings / sec</div>
+            <div class="value" id="persec">€ 0.00</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Elapsed (real time)</div>
+            <div class="value" id="elapsed">0s</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Simulated Years</div>
+            <div class="value" id="years">0.000000</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <canvas id="chart" width="800" height="240" aria-label="growth chart"></canvas>
+        <footer>Chart shows last ~60 seconds of values (rolling). Smooth exponential curve demonstrates compounding.</footer>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== Utilities =====
+    const S_PER_YEAR = 365 * 24 * 3600;
+    const fmt = (decimals) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+
+    function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+
+    // ===== State =====
+    let startTime = 0;          // performance.now() when (re)started
+    let pausedAt = 0;           // when paused
+    let accPaused = 0;          // accumulated paused duration
+    let timer = null;           // setInterval handle
+    let points = [];            // for chart
+
+    function getInputs() {
+      const P = parseFloat(document.getElementById('principal').value || '0');
+      const rPct = parseFloat(document.getElementById('rate').value || '0');
+      const tick = parseInt(document.getElementById('tick').value || '200', 10);
+      const decimals = parseInt(document.getElementById('decimals').value || '2', 10);
+      return { P, r: rPct / 100, tick: clamp(tick, 50, 5000), decimals };
+    }
+
+    function yearsElapsed() {
+      if (!startTime) return 0;
+      const now = performance.now();
+      const elapsedMs = now - startTime - accPaused;
+      return (elapsedMs / 1000) / S_PER_YEAR; // years
+    }
+
+    function amountAt(tYears, P, r) {
+      // Continuous compounding for smoothness: A = P * e^{r t}
+      return P * Math.exp(r * tYears);
+    }
+
+    function earningsPerSecond(A, r) {
+      // derivative dA/dt (per second): r*A / seconds_per_year
+      return (r * A) / S_PER_YEAR;
+    }
+
+    function updateUI() {
+      const { P, r, decimals } = getInputs();
+      const t = yearsElapsed();
+      const A = amountAt(t, P, r);
+      const earned = A - P;
+      const perSec = earningsPerSecond(A, r);
+
+      const f = fmt(decimals);
+      document.getElementById('amount').textContent = f.format(A);
+      document.getElementById('earned').textContent = f.format(earned);
+      document.getElementById('persec').textContent = f.format(perSec);
+
+      // elapsed display
+      const rtSeconds = ((performance.now() - startTime - accPaused) / 1000) | 0;
+      document.getElementById('elapsed').textContent = rtSeconds + 's';
+      document.getElementById('years').textContent = t.toFixed(6);
+
+      pushPoint(A);
+      drawChart();
+    }
+
+    // ===== Chart (minimal custom 2D canvas) =====
+    const canvas = document.getElementById('chart');
+    const ctx = canvas.getContext('2d');
+
+    function pushPoint(value) {
+      const now = Date.now();
+      points.push({ time: now, value });
+      // keep ~60 seconds of data
+      const cutoff = now - 60000;
+      while (points.length && points[0].time < cutoff) points.shift();
+    }
+
+    function drawChart() {
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      if (points.length < 2) return;
+
+      // axes padding
+      const padL = 40, padR = 12, padT = 10, padB = 22;
+      const innerW = w - padL - padR;
+      const innerH = h - padT - padB;
+
+      // scales
+      const minV = Math.min(...points.map(p => p.value));
+      const maxV = Math.max(...points.map(p => p.value));
+      const v0 = minV === maxV ? minV - 1 : minV;
+      const v1 = minV === maxV ? maxV + 1 : maxV;
+
+      const t0 = points[0].time;
+      const t1 = points[points.length - 1].time;
+
+      // background grid
+      ctx.globalAlpha = 0.15;
+      ctx.strokeStyle = '#7aa2ff';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 5; i++) {
+        const y = padT + (i / 5) * innerH;
+        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
+      // line
+      ctx.strokeStyle = '#5fd37a';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      points.forEach((p, i) => {
+        const x = padL + ((p.time - t0) / (t1 - t0 || 1)) * innerW;
+        const y = padT + (1 - (p.value - v0) / (v1 - v0 || 1)) * innerH;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // y-axis labels (min/max)
+      ctx.fillStyle = '#9fb1d1';
+      ctx.font = '12px system-ui, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(formatCompact(v0), padL - 6, h - padB);
+      ctx.fillText(formatCompact(v1), padL - 6, padT + 12);
+
+      // x-axis labels (seconds)
+      ctx.textAlign = 'center';
+      ctx.fillText('−60s', padL, h - 6);
+      ctx.fillText('now', w - padR, h - 6);
+    }
+
+    function formatCompact(n) {
+      // compact number without currency
+      return new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 2 }).format(n);
+    }
+
+    // ===== Controls =====
+    const startBtn = document.getElementById('startBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    function start() {
+      if (timer) return; // already running
+      const { tick } = getInputs();
+      if (!startTime) startTime = performance.now();
+      if (pausedAt) {
+        accPaused += performance.now() - pausedAt;
+        pausedAt = 0;
+      }
+      timer = setInterval(updateUI, tick);
+      startBtn.disabled = true;
+      pauseBtn.disabled = false;
+      updateUI();
+    }
+
+    function pause() {
+      if (!timer) return;
+      clearInterval(timer); timer = null;
+      pausedAt = performance.now();
+      startBtn.disabled = false;
+      pauseBtn.disabled = true;
+    }
+
+    function reset() {
+      clearInterval(timer); timer = null;
+      startTime = 0; pausedAt = 0; accPaused = 0; points = [];
+      startBtn.disabled = false;
+      pauseBtn.disabled = true;
+      updateUI();
+    }
+
+    startBtn.addEventListener('click', start);
+    pauseBtn.addEventListener('click', pause);
+    resetBtn.addEventListener('click', reset);
+
+    // Re-apply tick rate immediately when changed (if running)
+    document.getElementById('tick').addEventListener('change', () => {
+      if (timer) { clearInterval(timer); timer = null; start(); }
+    });
+
+    // Re-render when inputs change
+    ['principal', 'rate', 'decimals'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => { if (!timer) updateUI(); });
+    });
+
+    // Init
+    updateUI();
+
+    // Fallback: if device/browser throttles, suggest 500ms
+    setTimeout(() => {
+      const tickEl = document.getElementById('tick');
+      if (parseInt(tickEl.value, 10) < 200) tickEl.value = 200;
+    }, 0);
+  </script>
+</body>
+</html>
