@@ -2,25 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Progress Bar Clicker</title>
   <!--
     Progress Bar Clicker Game
 
     How to Play:
-    1. Click anywhere in the dark game area to spawn progress bars
+    1. Tap anywhere to spawn progress bars
     2. Bars fill automatically and award points when complete
-    3. Use points to buy upgrades in the right sidebar
+    3. Tap the Upgrades button to buy upgrades
     4. Chain spawns create cascading bar reactions
     5. Watch for gold Boost bars - they multiply all active bar values!
-
-    Tips:
-    - Crits flash red and give 2x points
-    - Chain Chance > 100% guarantees multiple spawns
-    - Max Chain Depth controls how deep cascades can go
   -->
   <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
   <style>
+    * {
+      box-sizing: border-box;
+      touch-action: manipulation;
+    }
     body {
       margin: 0;
       padding: 0;
@@ -29,6 +28,7 @@
       align-items: center;
       min-height: 100vh;
       background: #1a1a1a;
+      overflow: hidden;
     }
     canvas {
       display: block;
@@ -43,6 +43,7 @@
 let activeBars = [];
 let floatingTexts = [];
 let points = 0;
+let modalOpen = false;
 
 // Stats (modified by upgrades)
 let pointMultiplier = 1;
@@ -51,17 +52,22 @@ let critChance = 0.05;
 let chainChance = 0.05;
 let maxChainDepth = 1;
 
-// Layout constants
-const CANVAS_WIDTH = 1200;
-const CANVAS_HEIGHT = 800;
-const TOP_BAR_HEIGHT = 60;
-const SIDEBAR_WIDTH = 200;
-const GAME_AREA_WIDTH = CANVAS_WIDTH - SIDEBAR_WIDTH;
+// Layout constants - mobile portrait
+const CANVAS_WIDTH = 400;
+const CANVAS_HEIGHT = 700;
+const TOP_BAR_HEIGHT = 50;
 
-// Bar constants
-const BAR_WIDTH = 200;
-const BAR_HEIGHT = 30;
+// Bar constants - smaller for mobile
+const BAR_WIDTH = 120;
+const BAR_HEIGHT = 22;
 const BASE_POINTS = 10;
+
+// Modal constants
+const MODAL_PADDING = 20;
+const MODAL_WIDTH = CANVAS_WIDTH - MODAL_PADDING * 2;
+const MODAL_HEIGHT = 420;
+const MODAL_X = MODAL_PADDING;
+const MODAL_Y = (CANVAS_HEIGHT - MODAL_HEIGHT) / 2;
 
 // ============================================
 // UPGRADES
@@ -129,8 +135,8 @@ function purchaseUpgrade(key) {
 class ProgressBar {
   constructor(x, y, barType = 'normal', depth = 0) {
     // Clamp position to keep bar on screen
-    this.x = constrain(x, 0, GAME_AREA_WIDTH - BAR_WIDTH);
-    this.y = constrain(y, TOP_BAR_HEIGHT, CANVAS_HEIGHT - BAR_HEIGHT);
+    this.x = constrain(x, 0, CANVAS_WIDTH - BAR_WIDTH);
+    this.y = constrain(y, TOP_BAR_HEIGHT + 5, CANVAS_HEIGHT - BAR_HEIGHT - 5);
     this.width = BAR_WIDTH;
     this.height = BAR_HEIGHT;
     this.progress = 0;
@@ -167,30 +173,30 @@ class ProgressBar {
     // Background
     fill(68, 68, 68);
     stroke(255);
-    strokeWeight(2);
-    rect(this.x, this.y, this.width, this.height);
+    strokeWeight(1.5);
+    rect(this.x, this.y, this.width, this.height, 3);
 
     // Fill color based on type and state
     let fillColor;
     if (this.critFlash) {
-      fillColor = color(255, 82, 82); // Red for crit
+      fillColor = color(255, 82, 82);
     } else if (this.barType === 'boost') {
-      fillColor = color(255, 215, 0); // Gold for boost
+      fillColor = color(255, 215, 0);
     } else {
-      fillColor = color(76, 175, 80); // Green for normal
+      fillColor = color(76, 175, 80);
     }
 
     // Filled portion
     noStroke();
     fill(fillColor);
-    rect(this.x + 2, this.y + 2, (this.width - 4) * this.progress, this.height - 4);
+    rect(this.x + 2, this.y + 2, (this.width - 4) * this.progress, this.height - 4, 2);
 
-    // Depth indicator (small number in corner for chain depth)
+    // Depth indicator
     if (this.depth > 0) {
       fill(255, 255, 255, 150);
-      textSize(10);
+      textSize(8);
       textAlign(LEFT, TOP);
-      text('d' + this.depth, this.x + 5, this.y + 3);
+      text('d' + this.depth, this.x + 4, this.y + 2);
     }
   }
 
@@ -200,7 +206,6 @@ class ProgressBar {
     let earnedPoints = this.pointValue;
     let isCrit = false;
 
-    // Roll for crit
     if (random(0, 1) < critChance) {
       earnedPoints *= 2;
       isCrit = true;
@@ -208,24 +213,18 @@ class ProgressBar {
       this.critFlashTimer = 0.2;
     }
 
-    // Award points
     points += earnedPoints;
-
-    // Spawn floating text
     spawnFloatingText(this.x + this.width / 2, this.y, earnedPoints, isCrit);
 
-    // Boost bar effect: multiply all active bars' point values
     if (this.barType === 'boost') {
       for (let bar of activeBars) {
         if (!bar.completed) {
           bar.pointValue *= 1.5;
         }
       }
-      // Flash effect for boost
-      spawnFloatingText(this.x + this.width / 2, this.y - 20, 'BOOST!', false, color(255, 215, 0));
+      spawnFloatingText(this.x + this.width / 2, this.y - 15, 'BOOST!', false, color(255, 215, 0));
     }
 
-    // Roll for chain spawns
     this.rollChains();
   }
 
@@ -241,8 +240,8 @@ class ProgressBar {
 
     for (let i = 0; i < chainsToSpawn; i++) {
       spawnBar(
-        random(0, GAME_AREA_WIDTH - BAR_WIDTH),
-        random(TOP_BAR_HEIGHT, CANVAS_HEIGHT - BAR_HEIGHT),
+        random(0, CANVAS_WIDTH - BAR_WIDTH),
+        random(TOP_BAR_HEIGHT + 5, CANVAS_HEIGHT - BAR_HEIGHT - 5),
         this.depth + 1
       );
     }
@@ -258,9 +257,9 @@ class FloatingText {
     this.y = y;
     this.text = typeof text === 'number' ? '+' + Math.floor(text) : text;
     this.alpha = 255;
-    this.size = isCrit ? 24 : 16;
+    this.size = isCrit ? 18 : 12;
     this.color = customColor || (isCrit ? color(255, 82, 82) : color(255, 255, 255));
-    this.velocity = -60; // pixels per second upward
+    this.velocity = -50;
   }
 
   update(dt) {
@@ -285,8 +284,7 @@ class FloatingText {
 
 function spawnFloatingText(x, y, text, isCrit = false, customColor = null) {
   floatingTexts.push(new FloatingText(x, y, text, isCrit, customColor));
-  // Limit floating texts to prevent memory issues
-  if (floatingTexts.length > 100) {
+  if (floatingTexts.length > 50) {
     floatingTexts.shift();
   }
 }
@@ -295,7 +293,6 @@ function spawnFloatingText(x, y, text, isCrit = false, customColor = null) {
 // BAR SPAWNING
 // ============================================
 function spawnBar(x, y, depth = 0) {
-  // 3% chance for boost bar
   let barType = random(0, 1) < 0.03 ? 'boost' : 'normal';
   activeBars.push(new ProgressBar(x, y, barType, depth));
 }
@@ -311,33 +308,84 @@ function drawTopBar() {
 
   // Points display
   fill(255);
-  textSize(32);
+  textSize(20);
   textAlign(LEFT, CENTER);
-  text('Points: ' + formatNumber(Math.floor(points)), 20, TOP_BAR_HEIGHT / 2);
+  text(formatNumber(Math.floor(points)), 12, TOP_BAR_HEIGHT / 2);
 
   // Bar count
-  textSize(16);
-  textAlign(RIGHT, CENTER);
-  text('Active Bars: ' + activeBars.length, GAME_AREA_WIDTH - 20, TOP_BAR_HEIGHT / 2);
+  textSize(11);
+  fill(180);
+  textAlign(CENTER, CENTER);
+  text(activeBars.length + ' bars', CANVAS_WIDTH / 2, TOP_BAR_HEIGHT / 2);
+
+  // Upgrades button
+  const btnWidth = 80;
+  const btnHeight = 32;
+  const btnX = CANVAS_WIDTH - btnWidth - 10;
+  const btnY = (TOP_BAR_HEIGHT - btnHeight) / 2;
+
+  fill(70, 130, 180);
+  stroke(100, 160, 210);
+  strokeWeight(1.5);
+  rect(btnX, btnY, btnWidth, btnHeight, 6);
+
+  fill(255);
+  noStroke();
+  textSize(12);
+  textAlign(CENTER, CENTER);
+  text('Upgrades', btnX + btnWidth / 2, btnY + btnHeight / 2);
+
+  // Store button bounds
+  window.upgradesBtnBounds = { x: btnX, y: btnY, w: btnWidth, h: btnHeight };
 }
 
-function drawSidebar() {
-  // Background
-  fill(50, 50, 50);
+function drawModal() {
+  // Dim background
+  fill(0, 0, 0, 180);
   noStroke();
-  rect(GAME_AREA_WIDTH, 0, SIDEBAR_WIDTH, CANVAS_HEIGHT);
+  rect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  // Title
+  // Modal background
+  fill(45, 45, 45);
+  stroke(80, 80, 80);
+  strokeWeight(2);
+  rect(MODAL_X, MODAL_Y, MODAL_WIDTH, MODAL_HEIGHT, 10);
+
+  // Header
   fill(255);
-  textSize(20);
+  textSize(18);
   textAlign(CENTER, TOP);
-  text('UPGRADES', GAME_AREA_WIDTH + SIDEBAR_WIDTH / 2, 15);
+  text('UPGRADES', CANVAS_WIDTH / 2, MODAL_Y + 12);
+
+  // Points display in modal
+  textSize(14);
+  fill(180, 255, 180);
+  text('Points: ' + formatNumber(Math.floor(points)), CANVAS_WIDTH / 2, MODAL_Y + 36);
+
+  // Close button (X)
+  const closeSize = 28;
+  const closeX = MODAL_X + MODAL_WIDTH - closeSize - 8;
+  const closeY = MODAL_Y + 8;
+
+  fill(100, 60, 60);
+  stroke(150, 80, 80);
+  strokeWeight(1);
+  rect(closeX, closeY, closeSize, closeSize, 4);
+
+  fill(255);
+  noStroke();
+  textSize(16);
+  textAlign(CENTER, CENTER);
+  text('X', closeX + closeSize / 2, closeY + closeSize / 2);
+
+  window.closeBtnBounds = { x: closeX, y: closeY, w: closeSize, h: closeSize };
 
   // Draw upgrade buttons
-  let buttonY = 50;
-  const buttonHeight = 70;
-  const buttonPadding = 10;
-  const buttonWidth = SIDEBAR_WIDTH - 20;
+  let buttonY = MODAL_Y + 60;
+  const buttonHeight = 58;
+  const buttonPadding = 8;
+  const buttonWidth = MODAL_WIDTH - 24;
+  const buttonX = MODAL_X + 12;
 
   const keys = Object.keys(upgrades);
   for (let i = 0; i < keys.length; i++) {
@@ -346,35 +394,36 @@ function drawSidebar() {
     const cost = getCost(key);
     const affordable = points >= cost;
 
-    // Store button bounds for click detection
-    u.buttonY = buttonY;
-    u.buttonHeight = buttonHeight;
+    u.buttonBounds = { x: buttonX, y: buttonY, w: buttonWidth, h: buttonHeight };
 
     // Button background
     if (affordable) {
-      fill(60, 100, 60); // Green tint if affordable
+      fill(50, 85, 50);
+      stroke(80, 140, 80);
     } else {
-      fill(60, 60, 60); // Gray if not
+      fill(55, 55, 55);
+      stroke(70, 70, 70);
     }
-    stroke(affordable ? color(100, 180, 100) : color(80, 80, 80));
-    strokeWeight(2);
-    rect(GAME_AREA_WIDTH + 10, buttonY, buttonWidth, buttonHeight, 5);
+    strokeWeight(1.5);
+    rect(buttonX, buttonY, buttonWidth, buttonHeight, 6);
 
-    // Upgrade name and level
+    // Name and level
     fill(255);
     noStroke();
-    textSize(14);
+    textSize(13);
     textAlign(LEFT, TOP);
-    text(u.name + ' (Lv ' + u.level + ')', GAME_AREA_WIDTH + 18, buttonY + 8);
+    text(u.name + ' (Lv ' + u.level + ')', buttonX + 10, buttonY + 8);
 
-    // Current value
-    textSize(12);
+    // Current value - right aligned
+    textAlign(RIGHT, TOP);
     fill(200, 200, 200);
-    text('Current: ' + u.getValue(), GAME_AREA_WIDTH + 18, buttonY + 28);
+    text(u.getValue(), buttonX + buttonWidth - 10, buttonY + 8);
 
     // Cost
-    fill(affordable ? color(100, 255, 100) : color(150, 150, 150));
-    text('Cost: ' + formatNumber(cost), GAME_AREA_WIDTH + 18, buttonY + 46);
+    textAlign(LEFT, BOTTOM);
+    fill(affordable ? color(120, 255, 120) : color(140, 140, 140));
+    textSize(12);
+    text('Cost: ' + formatNumber(cost), buttonX + 10, buttonY + buttonHeight - 8);
 
     buttonY += buttonHeight + buttonPadding;
   }
@@ -394,24 +443,19 @@ function formatNumber(num) {
 // ============================================
 function setup() {
   createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
+  textFont('sans-serif');
 }
 
 function draw() {
-  // Delta time in seconds
   let dt = deltaTime / 1000;
-
-  // Cap delta time to prevent huge jumps
   dt = min(dt, 0.1);
 
-  // Clear background
   background(42, 42, 42);
 
   // Update and filter bars
   for (let bar of activeBars) {
     bar.update(dt);
   }
-
-  // Remove completed bars (after crit flash finishes)
   activeBars = activeBars.filter(bar => !bar.completed || bar.critFlash);
 
   // Display bars
@@ -426,34 +470,68 @@ function draw() {
   }
   floatingTexts = floatingTexts.filter(ft => !ft.isDead());
 
-  // Draw UI on top
+  // Draw UI
   drawTopBar();
-  drawSidebar();
+
+  // Draw modal if open
+  if (modalOpen) {
+    drawModal();
+  }
 }
 
 function mousePressed() {
-  // Check if click is in sidebar (upgrade buttons)
-  if (mouseX > GAME_AREA_WIDTH) {
+  handleInput(mouseX, mouseY);
+}
+
+function touchStarted() {
+  if (touches.length > 0) {
+    handleInput(touches[0].x, touches[0].y);
+  }
+  return false; // Prevent default
+}
+
+function handleInput(x, y) {
+  // If modal is open, handle modal interactions
+  if (modalOpen) {
+    // Check close button
+    const cb = window.closeBtnBounds;
+    if (cb && x >= cb.x && x <= cb.x + cb.w && y >= cb.y && y <= cb.y + cb.h) {
+      modalOpen = false;
+      return;
+    }
+
+    // Check upgrade buttons
     const keys = Object.keys(upgrades);
     for (let key of keys) {
       const u = upgrades[key];
-      if (u.buttonY !== undefined) {
-        if (mouseY >= u.buttonY && mouseY <= u.buttonY + u.buttonHeight) {
-          purchaseUpgrade(key);
-          return;
-        }
+      const b = u.buttonBounds;
+      if (b && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+        purchaseUpgrade(key);
+        return;
       }
+    }
+
+    // Click outside modal closes it
+    if (x < MODAL_X || x > MODAL_X + MODAL_WIDTH || y < MODAL_Y || y > MODAL_Y + MODAL_HEIGHT) {
+      modalOpen = false;
     }
     return;
   }
 
-  // Check if click is in top bar (ignore)
-  if (mouseY < TOP_BAR_HEIGHT) {
+  // Check upgrades button
+  const ub = window.upgradesBtnBounds;
+  if (ub && x >= ub.x && x <= ub.x + ub.w && y >= ub.y && y <= ub.y + ub.h) {
+    modalOpen = true;
     return;
   }
 
-  // Spawn bar at click position
-  spawnBar(mouseX - BAR_WIDTH / 2, mouseY - BAR_HEIGHT / 2);
+  // Check if in top bar
+  if (y < TOP_BAR_HEIGHT) {
+    return;
+  }
+
+  // Spawn bar at tap position
+  spawnBar(x - BAR_WIDTH / 2, y - BAR_HEIGHT / 2);
 }
 </script>
 </body>
