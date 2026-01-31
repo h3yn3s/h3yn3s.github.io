@@ -4,535 +4,1171 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Progress Bar Clicker</title>
-  <!--
-    Progress Bar Clicker Game
-
-    How to Play:
-    1. Tap anywhere to spawn progress bars
-    2. Bars fill automatically and award points when complete
-    3. Tap the Upgrades button to buy upgrades
-    4. Chain spawns create cascading bar reactions
-    5. Watch for gold Boost bars - they multiply all active bar values!
-  -->
-  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
-      touch-action: manipulation;
-    }
-    body {
       margin: 0;
       padding: 0;
+      user-select: none;
+    }
+    body {
+      background: #0a0a12;
+      color: #fff;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+    }
+    #game-container {
       display: flex;
-      justify-content: center;
+      flex-direction: column;
+      height: 100vh;
+    }
+    #top-bar {
+      background: linear-gradient(180deg, #1a1a2e 0%, #12121f 100%);
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
       align-items: center;
-      min-height: 100vh;
-      background: #1a1a1a;
+      border-bottom: 2px solid #2a2a4a;
+      flex-shrink: 0;
+    }
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+    .stat-label {
+      color: #666;
+    }
+    .stat-value {
+      font-weight: bold;
+      color: #4ecca3;
+    }
+    .stat-value.slots {
+      color: #7eb8da;
+    }
+    .stat-value.shards {
+      color: #e94560;
+    }
+    .stat-value.cooking {
+      color: #ff9800;
+      font-style: italic;
+    }
+    #combo-display {
+      position: fixed;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 32px;
+      font-weight: bold;
+      color: #ff6b6b;
+      text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 100;
+      pointer-events: none;
+    }
+    #combo-display.active {
+      opacity: 1;
+    }
+    #combo-display.pulse {
+      animation: combo-pulse 0.15s ease-out;
+    }
+    @keyframes combo-pulse {
+      0% { transform: translateX(-50%) scale(1); }
+      50% { transform: translateX(-50%) scale(1.3); }
+      100% { transform: translateX(-50%) scale(1); }
+    }
+    #main-content {
+      display: flex;
+      flex: 1;
       overflow: hidden;
     }
-    canvas {
-      display: block;
+    #play-area {
+      flex: 1;
+      background: radial-gradient(ellipse at center, #0f0f1a 0%, #0a0a12 100%);
+      position: relative;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+    #sidebar {
+      width: 280px;
+      background: linear-gradient(180deg, #1a1a2e 0%, #12121f 100%);
+      border-left: 2px solid #2a2a4a;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    .sidebar-section {
+      border-bottom: 1px solid #2a2a4a;
+      padding: 12px;
+    }
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #666;
+      margin-bottom: 10px;
+      letter-spacing: 1px;
+    }
+    .upgrade-item, .unlock-item, .power-item {
+      background: rgba(255,255,255,0.03);
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .upgrade-item:hover:not(.disabled):not(.maxed),
+    .unlock-item:hover:not(.disabled):not(.unlocked),
+    .power-item:hover:not(.disabled) {
+      border-color: #4ecca3;
+      background: rgba(78, 204, 163, 0.1);
+    }
+    .upgrade-item.disabled, .unlock-item.disabled, .power-item.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .upgrade-item.maxed {
+      opacity: 0.6;
+      cursor: default;
+      border-color: #4ecca3;
+    }
+    .unlock-item.unlocked {
+      border-color: #4ecca3;
+      cursor: default;
+    }
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .item-name {
+      font-weight: bold;
+      font-size: 13px;
+    }
+    .item-level {
+      font-size: 11px;
+      color: #666;
+    }
+    .item-values {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .current-value {
+      color: #4ecca3;
+    }
+    .arrow {
+      color: #444;
+    }
+    .next-value {
+      color: #7eb8da;
+    }
+    .item-cost {
+      font-size: 11px;
+      color: #e94560;
+    }
+    .item-cost.affordable {
+      color: #4ecca3;
+    }
+    .unlock-badge {
+      background: #4ecca3;
+      color: #0a0a12;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: bold;
+    }
+    .item-description {
+      font-size: 11px;
+      color: #666;
+      margin-top: 4px;
+    }
+    .power-timer {
+      font-size: 11px;
+      color: #ff9800;
+      margin-top: 4px;
+    }
+    /* Progress bar styles */
+    .progress-bar {
+      position: absolute;
+      height: 26px;
+      border-radius: 4px;
+      overflow: visible;
+      border: 2px solid rgba(255,255,255,0.2);
+      transition: border-color 0.1s;
+      width: 140px;
+    }
+    .progress-bar-inner {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: 2px;
+      overflow: hidden;
+      background: #1a1a2e;
+    }
+    .progress-bar.manual {
+      border-color: rgba(126, 184, 218, 0.5);
+    }
+    .progress-bar.chain {
+      border-color: rgba(78, 204, 163, 0.5);
+    }
+    .progress-bar.depth-2 {
+      border-color: rgba(255, 193, 7, 0.6);
+    }
+    .progress-bar.depth-3 {
+      border-color: rgba(255, 152, 0, 0.7);
+    }
+    .progress-bar.depth-4 {
+      border-color: rgba(255, 87, 34, 0.8);
+    }
+    .progress-bar.depth-5 {
+      border-color: rgba(233, 30, 99, 0.9);
+    }
+    .progress-bar.crit-flash {
+      border-color: #ff5252 !important;
+      box-shadow: 0 0 15px rgba(255, 82, 82, 0.8);
+    }
+    .bar-fill {
+      height: 100%;
+      transition: width 0.05s linear;
+      position: relative;
+    }
+    .bar-fill.manual {
+      background: linear-gradient(90deg, #5a8fba, #7eb8da);
+    }
+    .bar-fill.chain {
+      background: linear-gradient(90deg, #3d9970, #4ecca3);
+    }
+    .bar-fill.depth-2 {
+      background: linear-gradient(90deg, #f39c12, #f1c40f);
+    }
+    .bar-fill.depth-3 {
+      background: linear-gradient(90deg, #e67e22, #ff9800);
+    }
+    .bar-fill.depth-4 {
+      background: linear-gradient(90deg, #e74c3c, #ff5722);
+    }
+    .bar-fill.depth-5 {
+      background: linear-gradient(90deg, #c0392b, #e91e63);
+    }
+    .depth-indicator {
+      position: absolute;
+      top: -18px;
+      left: 4px;
+      font-size: 10px;
+      color: rgba(255,255,255,0.7);
+      font-weight: bold;
+    }
+    .floating-text {
+      position: absolute;
+      font-weight: bold;
+      pointer-events: none;
+      animation: float-up 1.2s ease-out forwards;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+      z-index: 50;
+    }
+    .floating-text.normal {
+      color: #fff;
+      font-size: 16px;
+    }
+    .floating-text.combo {
+      color: #ff6b6b;
+      font-size: 20px;
+    }
+    .floating-text.crit {
+      color: #ff5252;
+      font-size: 24px;
+    }
+    .floating-text.depth {
+      color: #ffd700;
+      font-size: 18px;
+    }
+    @keyframes float-up {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      50% { opacity: 1; transform: translateY(-20px) scale(1.1); }
+      100% { opacity: 0; transform: translateY(-50px) scale(0.8); }
+    }
+    .slot-full-indicator {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(233, 69, 96, 0.9);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    .slot-full-indicator.show {
+      opacity: 1;
     }
   </style>
 </head>
 <body>
+  <div id="game-container">
+    <div id="top-bar">
+      <div class="stat">
+        <span class="stat-label">Bars:</span>
+        <span class="stat-value" id="completed-bars">0</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Slots:</span>
+        <span class="stat-value slots" id="manual-slots">0/3</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Active:</span>
+        <span class="stat-value" id="active-bars">0</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Shards:</span>
+        <span class="stat-value shards" id="chaos-shards">0</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Rate:</span>
+        <span class="stat-value cooking" id="cooking-value">~0</span>
+      </div>
+    </div>
+    <div id="combo-display">x1</div>
+    <div id="main-content">
+      <div id="play-area"></div>
+      <div id="sidebar">
+        <div class="sidebar-section" id="upgrades-section">
+          <div class="section-title">Upgrades</div>
+        </div>
+        <div class="sidebar-section" id="unlocks-section">
+          <div class="section-title">Special Bars</div>
+        </div>
+        <div class="sidebar-section" id="powers-section">
+          <div class="section-title">Chaos Powers</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slot-full-indicator" id="slot-indicator">Manual slots full! Wait for chains...</div>
+
 <script>
 // ============================================
 // GAME STATE
 // ============================================
-let activeBars = [];
-let floatingTexts = [];
-let points = 0;
-let modalOpen = false;
+let completedBars = 0;
+let chaosShards = 0;
+const MAX_ACTIVE_BARS = 150;
+const QUEUE_TO_SHARDS_RATE = 5;
 
-// Stats (modified by upgrades)
-let pointMultiplier = 1;
-let fillSpeed = 0.5;
-let critChance = 0.05;
-let chainChance = 0.05;
+// Core stats
+let baseFillTime = 10;        // 10 seconds base
+let fillSpeedMultiplier = 1;  // multiplier for speed upgrades
+let chainChance = 0.10;       // 10% starting chain chance!
 let maxChainDepth = 1;
+let barsPerCompletion = 1;
+let maxManualSlots = 3;
+let critChance = 0;
+let critMultiplier = 2;
 
-// Layout constants - mobile portrait
-const CANVAS_WIDTH = 400;
-const CANVAS_HEIGHT = 700;
-const TOP_BAR_HEIGHT = 50;
+// Tracking
+let manualBarsActive = 0;
+let activeBars = [];
 
-// Bar constants - smaller for mobile
-const BAR_WIDTH = 120;
-const BAR_HEIGHT = 22;
-const BASE_POINTS = 10;
+// Combo system
+let comboCount = 0;
+let lastCompletionTime = 0;
+const COMBO_WINDOW = 1500; // 1.5 seconds to chain combos
+let comboResetTimeout = null;
 
-// Modal constants
-const MODAL_PADDING = 20;
-const MODAL_WIDTH = CANVAS_WIDTH - MODAL_PADDING * 2;
-const MODAL_HEIGHT = 420;
-const MODAL_X = MODAL_PADDING;
-const MODAL_Y = (CANVAS_HEIGHT - MODAL_HEIGHT) / 2;
+// Chaos power timers
+let megaBoostTimer = 0;
+let luckyStormCount = 0;
 
 // ============================================
-// UPGRADES
+// LOCAL STORAGE
+// ============================================
+const SAVE_KEY = 'progressBarClicker_v1';
+
+function saveGame() {
+  const saveData = {
+    completedBars,
+    chaosShards,
+    upgrades: {},
+    unlocks: {}
+  };
+
+  for (const [key, upgrade] of Object.entries(upgrades)) {
+    saveData.upgrades[key] = upgrade.currentLevel;
+  }
+
+  for (const [key, unlock] of Object.entries(specialBarUnlocks)) {
+    saveData.unlocks[key] = unlock.unlocked;
+  }
+
+  localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+}
+
+function loadGame() {
+  const saved = localStorage.getItem(SAVE_KEY);
+  if (!saved) return false;
+
+  try {
+    const data = JSON.parse(saved);
+
+    completedBars = data.completedBars || 0;
+    chaosShards = data.chaosShards || 0;
+
+    // Restore upgrades
+    for (let [key, level] of Object.entries(data.upgrades || {})) {
+      // Backwards compat: old save key
+      if (key === 'barsPerCompletion') key = 'baseValue';
+
+      if (upgrades[key]) {
+        upgrades[key].currentLevel = level;
+        // Apply all levels up to current
+        if (level > 0 && upgrades[key].levels[level - 1]) {
+          upgrades[key].apply(upgrades[key].levels[level - 1].value);
+        }
+      }
+    }
+
+    // Restore unlocks
+    for (const [key, unlocked] of Object.entries(data.unlocks || {})) {
+      if (specialBarUnlocks[key]) {
+        specialBarUnlocks[key].unlocked = unlocked;
+      }
+    }
+
+    return true;
+  } catch (e) {
+    console.error('Failed to load save:', e);
+    return false;
+  }
+}
+
+function clearSave() {
+  localStorage.removeItem(SAVE_KEY);
+  location.reload();
+}
+
+// ============================================
+// UPGRADES DEFINITION
 // ============================================
 const upgrades = {
-  pointGain: {
-    name: 'Point Gain',
-    level: 0,
-    baseCost: 10,
-    costGrowth: 1.15,
-    getValue: () => pointMultiplier.toFixed(1) + 'x',
-    effect: () => { pointMultiplier += 0.5; }
+  baseValue: {
+    name: 'Base Value',
+    currentLevel: 0,
+    levels: [
+      { cost: 10, value: 2 },
+      { cost: 35, value: 3 },
+      { cost: 100, value: 5 },
+      { cost: 300, value: 8 },
+      { cost: 900, value: 12 },
+    ],
+    getDisplay: (val) => val + ' bars',
+    getCurrentValue: () => barsPerCompletion,
+    apply: (val) => { barsPerCompletion = val; }
+  },
+  chainChance: {
+    name: 'Chain Chance',
+    currentLevel: 0,
+    levels: [
+      { cost: 15, value: 0.20 },   // 20%
+      { cost: 40, value: 0.35 },   // 35%
+      { cost: 100, value: 0.50 },  // 50%
+      { cost: 250, value: 0.70 },  // 70%
+      { cost: 600, value: 0.90 },  // 90%
+      { cost: 1500, value: 1.10 }, // 110%
+    ],
+    getDisplay: (val) => Math.floor(val * 100) + '%',
+    getCurrentValue: () => chainChance,
+    apply: (val) => { chainChance = val; }
+  },
+  chainDepth: {
+    name: 'Chain Depth',
+    currentLevel: 0,
+    levels: [
+      { cost: 50, value: 2 },
+      { cost: 200, value: 3 },
+      { cost: 800, value: 4 },
+      { cost: 3000, value: 5 },
+    ],
+    getDisplay: (val) => 'Depth ' + val,
+    getCurrentValue: () => maxChainDepth,
+    apply: (val) => { maxChainDepth = val; }
+  },
+  manualSlots: {
+    name: 'Manual Slots',
+    currentLevel: 0,
+    levels: [
+      { cost: 25, value: 4 },
+      { cost: 80, value: 5 },
+      { cost: 200, value: 7 },
+      { cost: 500, value: 10 },
+    ],
+    getDisplay: (val) => val + ' slots',
+    getCurrentValue: () => maxManualSlots,
+    apply: (val) => { maxManualSlots = val; }
   },
   fillSpeed: {
     name: 'Fill Speed',
-    level: 0,
-    baseCost: 25,
-    costGrowth: 1.2,
-    getValue: () => fillSpeed.toFixed(2) + '/s',
-    effect: () => { fillSpeed += 0.1; }
+    currentLevel: 0,
+    levels: [
+      { cost: 60, value: 1.3 },   // 7.7s
+      { cost: 200, value: 1.7 },  // 5.9s
+      { cost: 600, value: 2.2 },  // 4.5s
+      { cost: 2000, value: 3.0 }, // 3.3s
+    ],
+    getDisplay: (val) => (baseFillTime / val).toFixed(1) + 's',
+    getCurrentValue: () => fillSpeedMultiplier,
+    apply: (val) => { fillSpeedMultiplier = val; }
   },
   critChance: {
     name: 'Crit Chance',
-    level: 0,
-    baseCost: 50,
-    costGrowth: 1.25,
-    getValue: () => (critChance * 100).toFixed(0) + '%',
-    effect: () => { critChance += 0.05; }
+    currentLevel: 0,
+    levels: [
+      { cost: 100, value: 0.08 },
+      { cost: 400, value: 0.18 },
+      { cost: 1500, value: 0.30 },
+    ],
+    getDisplay: (val) => Math.floor(val * 100) + '%',
+    getCurrentValue: () => critChance,
+    apply: (val) => { critChance = val; }
   },
-  chainChance: {
-    name: 'Chain Spawn',
-    level: 0,
-    baseCost: 100,
-    costGrowth: 1.3,
-    getValue: () => (chainChance * 100).toFixed(0) + '%',
-    effect: () => { chainChance += 0.1; }
-  },
-  maxDepth: {
-    name: 'Max Depth',
-    level: 0,
-    baseCost: 1000,
-    costGrowth: 10,
-    getValue: () => maxChainDepth.toString(),
-    effect: () => { maxChainDepth += 1; }
-  }
 };
 
-function getCost(upgradeKey) {
-  const u = upgrades[upgradeKey];
-  return Math.floor(u.baseCost * Math.pow(u.costGrowth, u.level));
-}
-
-function purchaseUpgrade(key) {
-  const cost = getCost(key);
-  if (points >= cost) {
-    points -= cost;
-    upgrades[key].level++;
-    upgrades[key].effect();
-  }
-}
+// ============================================
+// SPECIAL BAR UNLOCKS
+// ============================================
+const specialBarUnlocks = {
+  boostBar: {
+    name: 'Boost Bars',
+    cost: 300,
+    unlocked: false,
+    spawnChance: 0.05,
+    description: 'Gold bars that 2x all active bar speeds'
+  },
+  cascadeBar: {
+    name: 'Cascade Bars',
+    cost: 1000,
+    unlocked: false,
+    spawnChance: 0.04,
+    description: 'Rainbow bars that guarantee max depth chains'
+  },
+};
 
 // ============================================
-// PROGRESS BAR CLASS
+// CHAOS POWERS
 // ============================================
-class ProgressBar {
-  constructor(x, y, barType = 'normal', depth = 0) {
-    // Clamp position to keep bar on screen
-    this.x = constrain(x, 0, CANVAS_WIDTH - BAR_WIDTH);
-    this.y = constrain(y, TOP_BAR_HEIGHT + 5, CANVAS_HEIGHT - BAR_HEIGHT - 5);
-    this.width = BAR_WIDTH;
-    this.height = BAR_HEIGHT;
-    this.progress = 0;
-    this.barType = barType;
-    this.depth = depth;
-    this.pointValue = BASE_POINTS * pointMultiplier;
-    this.currentFillSpeed = fillSpeed;
-    this.completed = false;
-    this.critFlash = false;
-    this.critFlashTimer = 0;
-  }
-
-  update(dt) {
-    // Update crit flash timer (must run even after completion)
-    if (this.critFlash) {
-      this.critFlashTimer -= dt;
-      if (this.critFlashTimer <= 0) {
-        this.critFlash = false;
-      }
-    }
-
-    if (this.completed) return;
-
-    // Fill the bar
-    this.progress += this.currentFillSpeed * dt;
-
-    if (this.progress >= 1) {
-      this.progress = 1;
-      this.onComplete();
-    }
-  }
-
-  display() {
-    // Background
-    fill(68, 68, 68);
-    stroke(255);
-    strokeWeight(1.5);
-    rect(this.x, this.y, this.width, this.height, 3);
-
-    // Fill color based on type and state
-    let fillColor;
-    if (this.critFlash) {
-      fillColor = color(255, 82, 82);
-    } else if (this.barType === 'boost') {
-      fillColor = color(255, 215, 0);
-    } else {
-      fillColor = color(76, 175, 80);
-    }
-
-    // Filled portion
-    noStroke();
-    fill(fillColor);
-    rect(this.x + 2, this.y + 2, (this.width - 4) * this.progress, this.height - 4, 2);
-
-    // Depth indicator
-    if (this.depth > 0) {
-      fill(255, 255, 255, 150);
-      textSize(8);
-      textAlign(LEFT, TOP);
-      text('d' + this.depth, this.x + 4, this.y + 2);
-    }
-  }
-
-  onComplete() {
-    this.completed = true;
-
-    let earnedPoints = this.pointValue;
-    let isCrit = false;
-
-    if (random(0, 1) < critChance) {
-      earnedPoints *= 2;
-      isCrit = true;
-      this.critFlash = true;
-      this.critFlashTimer = 0.2;
-    }
-
-    points += earnedPoints;
-    spawnFloatingText(this.x + this.width / 2, this.y, earnedPoints, isCrit);
-
-    if (this.barType === 'boost') {
+const chaosPowers = {
+  completeAll: {
+    name: 'Complete All',
+    cost: 100,
+    description: 'Instantly finish all active bars',
+    activate: () => {
       for (let bar of activeBars) {
-        if (!bar.completed) {
-          bar.pointValue *= 1.5;
-        }
+        if (!bar.completed) bar.progress = 1;
       }
-      spawnFloatingText(this.x + this.width / 2, this.y - 15, 'BOOST!', false, color(255, 215, 0));
     }
+  },
+  megaBoost: {
+    name: 'Mega Boost',
+    cost: 50,
+    description: '3x bars earned for 30 seconds',
+    activate: () => { megaBoostTimer = 30; }
+  },
+  luckyStorm: {
+    name: 'Lucky Storm',
+    cost: 75,
+    description: 'Next 10 completions guarantee chains',
+    activate: () => { luckyStormCount = 10; }
+  },
+};
 
-    this.rollChains();
+// ============================================
+// COMBO SYSTEM
+// ============================================
+function registerCompletion() {
+  const now = performance.now();
+
+  if (now - lastCompletionTime < COMBO_WINDOW) {
+    comboCount++;
+  } else {
+    comboCount = 1;
   }
 
-  rollChains() {
-    if (this.depth >= maxChainDepth) return;
+  lastCompletionTime = now;
 
-    let chainsToSpawn = Math.floor(chainChance);
-    let remainingChance = chainChance % 1;
+  // Reset combo after window expires
+  if (comboResetTimeout) clearTimeout(comboResetTimeout);
+  comboResetTimeout = setTimeout(() => {
+    comboCount = 0;
+    updateComboDisplay();
+  }, COMBO_WINDOW);
 
-    if (random(0, 1) < remainingChance) {
-      chainsToSpawn += 1;
-    }
+  updateComboDisplay();
+  return comboCount;
+}
 
-    for (let i = 0; i < chainsToSpawn; i++) {
-      spawnBar(
-        random(0, CANVAS_WIDTH - BAR_WIDTH),
-        random(TOP_BAR_HEIGHT + 5, CANVAS_HEIGHT - BAR_HEIGHT - 5),
-        this.depth + 1
-      );
-    }
+function getComboMultiplier() {
+  if (comboCount <= 1) return 1;
+  // Combo multiplier: 1, 1.5, 2, 2.5, 3, 3.5...
+  return 1 + (comboCount - 1) * 0.5;
+}
+
+function updateComboDisplay() {
+  const display = document.getElementById('combo-display');
+  if (comboCount > 1) {
+    display.textContent = 'x' + getComboMultiplier().toFixed(1);
+    display.classList.add('active');
+    display.classList.remove('pulse');
+    void display.offsetWidth; // trigger reflow
+    display.classList.add('pulse');
+  } else {
+    display.classList.remove('active');
   }
 }
 
 // ============================================
-// FLOATING TEXT CLASS
+// CHAIN DAMPENING
 // ============================================
-class FloatingText {
-  constructor(x, y, text, isCrit = false, customColor = null) {
-    this.x = x;
-    this.y = y;
-    this.text = typeof text === 'number' ? '+' + Math.floor(text) : text;
-    this.alpha = 255;
-    this.size = isCrit ? 18 : 12;
-    this.color = customColor || (isCrit ? color(255, 82, 82) : color(255, 255, 255));
-    this.velocity = -50;
-  }
-
-  update(dt) {
-    this.y += this.velocity * dt;
-    this.alpha -= 200 * dt;
-  }
-
-  display() {
-    if (this.alpha <= 0) return;
-    let c = this.color;
-    fill(red(c), green(c), blue(c), this.alpha);
-    noStroke();
-    textSize(this.size);
-    textAlign(CENTER, CENTER);
-    text(this.text, this.x, this.y);
-  }
-
-  isDead() {
-    return this.alpha <= 0;
-  }
-}
-
-function spawnFloatingText(x, y, text, isCrit = false, customColor = null) {
-  floatingTexts.push(new FloatingText(x, y, text, isCrit, customColor));
-  if (floatingTexts.length > 50) {
-    floatingTexts.shift();
-  }
+function getEffectiveChainChance(depth) {
+  if (luckyStormCount > 0) return 1.0;
+  const dampening = Math.pow(0.7, depth);
+  return chainChance * dampening;
 }
 
 // ============================================
-// BAR SPAWNING
+// BAR CREATION & MANAGEMENT
 // ============================================
-function spawnBar(x, y, depth = 0) {
-  let barType = random(0, 1) < 0.03 ? 'boost' : 'normal';
-  activeBars.push(new ProgressBar(x, y, barType, depth));
+function determineBarType() {
+  const roll = Math.random();
+  let cumulative = 0;
+
+  if (specialBarUnlocks.cascadeBar.unlocked) {
+    cumulative += specialBarUnlocks.cascadeBar.spawnChance;
+    if (roll < cumulative) return 'cascade';
+  }
+  if (specialBarUnlocks.boostBar.unlocked) {
+    cumulative += specialBarUnlocks.boostBar.spawnChance;
+    if (roll < cumulative) return 'boost';
+  }
+  return 'normal';
+}
+
+function createBar(x, y, depth = 0, isManual = false) {
+  // Check manual slot limit
+  if (isManual) {
+    if (manualBarsActive >= maxManualSlots) {
+      showSlotFullIndicator();
+      return null;
+    }
+    manualBarsActive++;
+  }
+
+  // Check total bar limit
+  if (activeBars.length >= MAX_ACTIVE_BARS) {
+    chaosShards += QUEUE_TO_SHARDS_RATE;
+    updateUI();
+    return null;
+  }
+
+  const playArea = document.getElementById('play-area');
+  const rect = playArea.getBoundingClientRect();
+
+  // Clamp position
+  x = Math.max(10, Math.min(x, rect.width - 150));
+  y = Math.max(10, Math.min(y, rect.height - 36));
+
+  const barType = determineBarType();
+  const depthClass = depth > 1 ? `depth-${Math.min(depth, 5)}` : (isManual ? 'manual' : 'chain');
+
+  const bar = document.createElement('div');
+  bar.className = `progress-bar ${depthClass}`;
+  if (barType === 'boost') bar.classList.add('boost-bar');
+  if (barType === 'cascade') bar.classList.add('cascade-bar');
+  bar.style.left = x + 'px';
+  bar.style.top = y + 'px';
+
+  const inner = document.createElement('div');
+  inner.className = 'progress-bar-inner';
+  bar.appendChild(inner);
+
+  const fill = document.createElement('div');
+  fill.className = `bar-fill ${depthClass}`;
+  fill.style.width = '0%';
+  inner.appendChild(fill);
+
+  if (depth > 0) {
+    const depthIndicator = document.createElement('span');
+    depthIndicator.className = 'depth-indicator';
+    depthIndicator.textContent = 'd' + depth;
+    bar.appendChild(depthIndicator);
+  }
+
+  playArea.appendChild(bar);
+
+  // Speed variance: ±15%
+  const variance = 0.85 + Math.random() * 0.30;
+  const effectiveFillTime = baseFillTime / fillSpeedMultiplier * variance;
+
+  const barData = {
+    element: bar,
+    fill: fill,
+    progress: 0,
+    type: barType,
+    depth: depth,
+    isManual: isManual,
+    x: x,
+    y: y,
+    completed: false,
+    fillTime: effectiveFillTime,
+    fillRate: 1 / effectiveFillTime, // progress per second
+  };
+
+  activeBars.push(barData);
+  updateUI();
+  return barData;
+}
+
+function completeBar(bar) {
+  if (bar.completed) return;
+  bar.completed = true;
+
+  // Register for combo
+  const combo = registerCompletion();
+  const comboMult = getComboMultiplier();
+
+  // Calculate depth bonus: depth 1 = 1x, depth 2 = 1.5x, depth 3 = 2x, etc.
+  const depthBonus = 1 + (bar.depth * 0.5);
+
+  // Base earning
+  let earned = barsPerCompletion * depthBonus * comboMult;
+  let isCrit = false;
+
+  // Crit check
+  if (Math.random() < critChance) {
+    earned *= critMultiplier;
+    isCrit = true;
+    bar.element.classList.add('crit-flash');
+  }
+
+  // Mega boost
+  if (megaBoostTimer > 0) {
+    earned *= 3;
+  }
+
+  earned = Math.floor(earned);
+  completedBars += earned;
+
+  // Floating text
+  const textType = isCrit ? 'crit' : (combo > 1 ? 'combo' : (bar.depth > 0 ? 'depth' : 'normal'));
+  spawnFloatingText(bar.x + 70, bar.y, '+' + earned, textType);
+
+  // Special bar effects
+  if (bar.type === 'boost') {
+    for (let b of activeBars) {
+      if (!b.completed) {
+        b.fillRate *= 2;
+      }
+    }
+    spawnFloatingText(bar.x + 70, bar.y - 20, 'BOOST!', 'depth');
+  } else if (bar.type === 'cascade') {
+    // Cascade guarantees max chains
+    bar.cascadeChain = true;
+    spawnFloatingText(bar.x + 70, bar.y - 20, 'CASCADE!', 'crit');
+  }
+
+  // Roll for chains
+  rollChains(bar);
+
+  // Track manual slot
+  if (bar.isManual) {
+    manualBarsActive--;
+  }
+
+  // Lucky storm tracking
+  if (luckyStormCount > 0) {
+    luckyStormCount--;
+  }
+
+  // Remove bar
+  setTimeout(() => {
+    bar.element.remove();
+    const idx = activeBars.indexOf(bar);
+    if (idx > -1) activeBars.splice(idx, 1);
+    updateUI();
+  }, 150);
+
+  updateUI();
+}
+
+function rollChains(bar) {
+  if (bar.depth >= maxChainDepth) return;
+
+  let effectiveChance = bar.cascadeChain ? maxChainDepth : getEffectiveChainChance(bar.depth);
+  if (bar.cascadeChain) effectiveChance = 1.0; // guarantee chain
+
+  // Calculate chains to spawn
+  let chainsToSpawn = Math.floor(effectiveChance);
+  const remainingChance = effectiveChance % 1;
+
+  if (Math.random() < remainingChance) {
+    chainsToSpawn++;
+  }
+
+  // Cascade bars spawn multiple chains
+  if (bar.cascadeChain) {
+    chainsToSpawn = Math.max(chainsToSpawn, 2);
+  }
+
+  const playArea = document.getElementById('play-area');
+  const rect = playArea.getBoundingClientRect();
+
+  for (let i = 0; i < chainsToSpawn; i++) {
+    // Spawn near parent for visual cascade effect
+    const offsetX = (Math.random() - 0.5) * 200;
+    const offsetY = (Math.random() - 0.5) * 100 + 40;
+    let newX = bar.x + offsetX;
+    let newY = bar.y + offsetY;
+
+    // Clamp to play area
+    newX = Math.max(10, Math.min(newX, rect.width - 150));
+    newY = Math.max(10, Math.min(newY, rect.height - 36));
+
+    // Small delay for visual effect
+    setTimeout(() => {
+      const newBar = createBar(newX, newY, bar.depth + 1, false);
+      if (newBar && bar.cascadeChain) {
+        newBar.cascadeChain = true; // propagate cascade
+      }
+    }, i * 50);
+  }
+}
+
+function spawnFloatingText(x, y, text, type = 'normal') {
+  const playArea = document.getElementById('play-area');
+  const ft = document.createElement('div');
+  ft.className = `floating-text ${type}`;
+  ft.textContent = text;
+  ft.style.left = x + 'px';
+  ft.style.top = y + 'px';
+  playArea.appendChild(ft);
+
+  setTimeout(() => ft.remove(), 1200);
+}
+
+function showSlotFullIndicator() {
+  const indicator = document.getElementById('slot-indicator');
+  indicator.classList.add('show');
+  setTimeout(() => indicator.classList.remove('show'), 1500);
+}
+
+// ============================================
+// GAME LOOP
+// ============================================
+let lastTime = performance.now();
+let gameRunning = true;
+
+function processTime(dt) {
+  // Update mega boost timer
+  if (megaBoostTimer > 0) {
+    megaBoostTimer -= dt;
+    if (megaBoostTimer <= 0) megaBoostTimer = 0;
+  }
+
+  // Update bars
+  for (let bar of activeBars) {
+    if (bar.completed) continue;
+
+    bar.progress += bar.fillRate * dt;
+
+    if (bar.progress >= 1) {
+      bar.progress = 1;
+      bar.fill.style.width = '100%';
+      completeBar(bar);
+    } else {
+      bar.fill.style.width = (bar.progress * 100) + '%';
+    }
+  }
+}
+
+function gameLoop() {
+  const now = performance.now();
+  const dt = Math.min((now - lastTime) / 1000, 0.1);
+  lastTime = now;
+
+  processTime(dt);
+
+  requestAnimationFrame(gameLoop);
+}
+
+// Background timer - runs even when tab unfocused (throttled to ~1Hz)
+function backgroundTick() {
+  if (document.hidden) {
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 2); // Cap at 2 seconds per tick
+    lastTime = now;
+    processTime(dt);
+    updateUI();
+  }
+}
+
+// Catch up when tab becomes visible again
+function handleVisibilityChange() {
+  if (!document.hidden) {
+    // Tab became visible - sync time
+    lastTime = performance.now();
+    updateUI();
+    renderSidebar();
+  }
+}
+
+document.addEventListener('visibilitychange', handleVisibilityChange);
+
+// ============================================
+// UPGRADE SYSTEM
+// ============================================
+function buyUpgrade(upgradeKey) {
+  const upgrade = upgrades[upgradeKey];
+  const currentLevel = upgrade.currentLevel;
+
+  if (currentLevel >= upgrade.levels.length) return;
+
+  const nextLevel = upgrade.levels[currentLevel];
+  if (completedBars < nextLevel.cost) return;
+
+  completedBars -= nextLevel.cost;
+  upgrade.currentLevel++;
+  upgrade.apply(nextLevel.value);
+
+  updateUI();
+  renderSidebar();
+  saveGame(); // Immediate save after purchase
+}
+
+function unlockSpecialBar(barType) {
+  const unlock = specialBarUnlocks[barType];
+  if (unlock.unlocked) return;
+  if (completedBars < unlock.cost) return;
+
+  completedBars -= unlock.cost;
+  unlock.unlocked = true;
+
+  updateUI();
+  renderSidebar();
+  saveGame(); // Immediate save after unlock
+}
+
+function activateChaosPower(powerKey) {
+  const power = chaosPowers[powerKey];
+  if (chaosShards < power.cost) return;
+
+  chaosShards -= power.cost;
+  power.activate();
+
+  updateUI();
+  renderSidebar();
+  saveGame(); // Immediate save after power use
 }
 
 // ============================================
 // UI RENDERING
 // ============================================
-function drawTopBar() {
-  // Background
-  fill(40, 40, 40);
-  noStroke();
-  rect(0, 0, CANVAS_WIDTH, TOP_BAR_HEIGHT);
-
-  // Points display
-  fill(255);
-  textSize(20);
-  textAlign(LEFT, CENTER);
-  text(formatNumber(Math.floor(points)), 12, TOP_BAR_HEIGHT / 2);
-
-  // Bar count
-  textSize(11);
-  fill(180);
-  textAlign(CENTER, CENTER);
-  text(activeBars.length + ' bars', CANVAS_WIDTH / 2, TOP_BAR_HEIGHT / 2);
-
-  // Upgrades button
-  const btnWidth = 80;
-  const btnHeight = 32;
-  const btnX = CANVAS_WIDTH - btnWidth - 10;
-  const btnY = (TOP_BAR_HEIGHT - btnHeight) / 2;
-
-  fill(70, 130, 180);
-  stroke(100, 160, 210);
-  strokeWeight(1.5);
-  rect(btnX, btnY, btnWidth, btnHeight, 6);
-
-  fill(255);
-  noStroke();
-  textSize(12);
-  textAlign(CENTER, CENTER);
-  text('Upgrades', btnX + btnWidth / 2, btnY + btnHeight / 2);
-
-  // Store button bounds
-  window.upgradesBtnBounds = { x: btnX, y: btnY, w: btnWidth, h: btnHeight };
-}
-
-function drawModal() {
-  // Dim background
-  fill(0, 0, 0, 180);
-  noStroke();
-  rect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-  // Modal background
-  fill(45, 45, 45);
-  stroke(80, 80, 80);
-  strokeWeight(2);
-  rect(MODAL_X, MODAL_Y, MODAL_WIDTH, MODAL_HEIGHT, 10);
-
-  // Header
-  fill(255);
-  textSize(18);
-  textAlign(CENTER, TOP);
-  text('UPGRADES', CANVAS_WIDTH / 2, MODAL_Y + 12);
-
-  // Points display in modal
-  textSize(14);
-  fill(180, 255, 180);
-  text('Points: ' + formatNumber(Math.floor(points)), CANVAS_WIDTH / 2, MODAL_Y + 36);
-
-  // Close button (X)
-  const closeSize = 28;
-  const closeX = MODAL_X + MODAL_WIDTH - closeSize - 8;
-  const closeY = MODAL_Y + 8;
-
-  fill(100, 60, 60);
-  stroke(150, 80, 80);
-  strokeWeight(1);
-  rect(closeX, closeY, closeSize, closeSize, 4);
-
-  fill(255);
-  noStroke();
-  textSize(16);
-  textAlign(CENTER, CENTER);
-  text('X', closeX + closeSize / 2, closeY + closeSize / 2);
-
-  window.closeBtnBounds = { x: closeX, y: closeY, w: closeSize, h: closeSize };
-
-  // Draw upgrade buttons
-  let buttonY = MODAL_Y + 60;
-  const buttonHeight = 58;
-  const buttonPadding = 8;
-  const buttonWidth = MODAL_WIDTH - 24;
-  const buttonX = MODAL_X + 12;
-
-  const keys = Object.keys(upgrades);
-  for (let i = 0; i < keys.length; i++) {
-    const key = keys[i];
-    const u = upgrades[key];
-    const cost = getCost(key);
-    const affordable = points >= cost;
-
-    u.buttonBounds = { x: buttonX, y: buttonY, w: buttonWidth, h: buttonHeight };
-
-    // Button background
-    if (affordable) {
-      fill(50, 85, 50);
-      stroke(80, 140, 80);
-    } else {
-      fill(55, 55, 55);
-      stroke(70, 70, 70);
-    }
-    strokeWeight(1.5);
-    rect(buttonX, buttonY, buttonWidth, buttonHeight, 6);
-
-    // Name and level
-    fill(255);
-    noStroke();
-    textSize(13);
-    textAlign(LEFT, TOP);
-    text(u.name + ' (Lv ' + u.level + ')', buttonX + 10, buttonY + 8);
-
-    // Current value - right aligned
-    textAlign(RIGHT, TOP);
-    fill(200, 200, 200);
-    text(u.getValue(), buttonX + buttonWidth - 10, buttonY + 8);
-
-    // Cost
-    textAlign(LEFT, BOTTOM);
-    fill(affordable ? color(120, 255, 120) : color(140, 140, 140));
-    textSize(12);
-    text('Cost: ' + formatNumber(cost), buttonX + 10, buttonY + buttonHeight - 8);
-
-    buttonY += buttonHeight + buttonPadding;
-  }
-}
-
 function formatNumber(num) {
-  if (num >= 1000000) {
-    return (num / 1000000).toFixed(2) + 'M';
-  } else if (num >= 1000) {
-    return (num / 1000).toFixed(2) + 'K';
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return Math.floor(num).toString();
+}
+
+function calculateBarsPerSecond() {
+  let totalPerSecond = 0;
+
+  for (const bar of activeBars) {
+    if (bar.completed) continue;
+
+    const depthBonus = 1 + (bar.depth * 0.5);
+    let value = barsPerCompletion * depthBonus;
+
+    // Apply mega boost if active
+    if (megaBoostTimer > 0) value *= 3;
+
+    // Value per second = value / remaining time
+    const remainingProgress = 1 - bar.progress;
+    const remainingTime = remainingProgress / bar.fillRate;
+
+    if (remainingTime > 0) {
+      totalPerSecond += value / remainingTime;
+    }
   }
-  return num.toString();
+
+  return totalPerSecond;
+}
+
+function updateUI() {
+  document.getElementById('completed-bars').textContent = formatNumber(completedBars);
+  document.getElementById('manual-slots').textContent = manualBarsActive + '/' + maxManualSlots;
+  document.getElementById('active-bars').textContent = activeBars.filter(b => !b.completed).length;
+  document.getElementById('chaos-shards').textContent = formatNumber(chaosShards);
+  document.getElementById('cooking-value').textContent = calculateBarsPerSecond().toFixed(1) + '/s';
+}
+
+function renderSidebar() {
+  // Render upgrades
+  const upgradesSection = document.getElementById('upgrades-section');
+  upgradesSection.innerHTML = '<div class="section-title">Upgrades</div>';
+
+  for (const [key, upgrade] of Object.entries(upgrades)) {
+    const currentLevel = upgrade.currentLevel;
+    const isMaxed = currentLevel >= upgrade.levels.length;
+    const nextLevel = isMaxed ? null : upgrade.levels[currentLevel];
+    const canAfford = nextLevel && completedBars >= nextLevel.cost;
+
+    const item = document.createElement('div');
+    item.className = 'upgrade-item' + (isMaxed ? ' maxed' : (!canAfford ? ' disabled' : ''));
+
+    let valuesHtml = '';
+    const currentValue = upgrade.getCurrentValue();
+
+    if (isMaxed) {
+      valuesHtml = `<span class="current-value">${upgrade.getDisplay(currentValue)}</span> <span style="color:#4ecca3">MAX</span>`;
+    } else {
+      valuesHtml = `<span class="current-value">${upgrade.getDisplay(currentValue)}</span> <span class="arrow">→</span> <span class="next-value">${upgrade.getDisplay(nextLevel.value)}</span>`;
+    }
+
+    item.innerHTML = `
+      <div class="item-header">
+        <span class="item-name">${upgrade.name}</span>
+        <span class="item-level">${currentLevel}/${upgrade.levels.length}</span>
+      </div>
+      <div class="item-values">${valuesHtml}</div>
+      ${!isMaxed ? `<div class="item-cost ${canAfford ? 'affordable' : ''}">Cost: ${formatNumber(nextLevel.cost)} bars</div>` : ''}
+    `;
+
+    if (!isMaxed && canAfford) {
+      item.onclick = () => buyUpgrade(key);
+    }
+
+    upgradesSection.appendChild(item);
+  }
+
+  // Render unlocks
+  const unlocksSection = document.getElementById('unlocks-section');
+  unlocksSection.innerHTML = '<div class="section-title">Special Bars</div>';
+
+  for (const [key, unlock] of Object.entries(specialBarUnlocks)) {
+    const canAfford = completedBars >= unlock.cost;
+
+    const item = document.createElement('div');
+    item.className = 'unlock-item' + (unlock.unlocked ? ' unlocked' : (!canAfford ? ' disabled' : ''));
+
+    item.innerHTML = `
+      <div class="item-header">
+        <span class="item-name">${unlock.name}</span>
+        ${unlock.unlocked ? '<span class="unlock-badge">UNLOCKED</span>' : ''}
+      </div>
+      <div class="item-description">${unlock.description}</div>
+      ${!unlock.unlocked ? `<div class="item-cost ${canAfford ? 'affordable' : ''}">Cost: ${formatNumber(unlock.cost)} bars</div>` : ''}
+    `;
+
+    if (!unlock.unlocked && canAfford) {
+      item.onclick = () => unlockSpecialBar(key);
+    }
+
+    unlocksSection.appendChild(item);
+  }
+
+  // Render chaos powers
+  const powersSection = document.getElementById('powers-section');
+  powersSection.innerHTML = '<div class="section-title">Chaos Powers</div>';
+
+  for (const [key, power] of Object.entries(chaosPowers)) {
+    const canAfford = chaosShards >= power.cost;
+
+    const item = document.createElement('div');
+    item.className = 'power-item' + (!canAfford ? ' disabled' : '');
+
+    let timerHtml = '';
+    if (key === 'megaBoost' && megaBoostTimer > 0) {
+      timerHtml = `<div class="power-timer">Active: ${Math.ceil(megaBoostTimer)}s</div>`;
+    } else if (key === 'luckyStorm' && luckyStormCount > 0) {
+      timerHtml = `<div class="power-timer">Remaining: ${luckyStormCount}</div>`;
+    }
+
+    item.innerHTML = `
+      <div class="item-header">
+        <span class="item-name">${power.name}</span>
+      </div>
+      <div class="item-description">${power.description}</div>
+      <div class="item-cost shards ${canAfford ? 'affordable' : ''}">${power.cost} shards</div>
+      ${timerHtml}
+    `;
+
+    if (canAfford) {
+      item.onclick = () => activateChaosPower(key);
+    }
+
+    powersSection.appendChild(item);
+  }
 }
 
 // ============================================
-// P5.JS LIFECYCLE
+// INPUT HANDLING
 // ============================================
-function setup() {
-  createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
-  textFont('sans-serif');
+function handleClick(e) {
+  const playArea = document.getElementById('play-area');
+  const rect = playArea.getBoundingClientRect();
+
+  let x = e.clientX - rect.left - 70;
+  let y = e.clientY - rect.top - 13;
+
+  createBar(x, y, 0, true); // isManual = true
 }
 
-function draw() {
-  let dt = deltaTime / 1000;
-  dt = min(dt, 0.1);
-
-  background(42, 42, 42);
-
-  // Update and filter bars
-  for (let bar of activeBars) {
-    bar.update(dt);
-  }
-  activeBars = activeBars.filter(bar => !bar.completed || bar.critFlash);
-
-  // Display bars
-  for (let bar of activeBars) {
-    bar.display();
+// ============================================
+// INITIALIZATION
+// ============================================
+function init() {
+  // Load saved game
+  const loaded = loadGame();
+  if (loaded) {
+    console.log('Game loaded from save');
   }
 
-  // Update and display floating texts
-  for (let ft of floatingTexts) {
-    ft.update(dt);
-    ft.display();
-  }
-  floatingTexts = floatingTexts.filter(ft => !ft.isDead());
+  const playArea = document.getElementById('play-area');
+  playArea.addEventListener('click', handleClick);
+  playArea.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
+  });
 
-  // Draw UI
-  drawTopBar();
+  updateUI();
+  renderSidebar();
+  gameLoop();
 
-  // Draw modal if open
-  if (modalOpen) {
-    drawModal();
-  }
+  // Update sidebar periodically for timers
+  setInterval(renderSidebar, 1000);
+
+  // Background timer for when tab is unfocused
+  setInterval(backgroundTick, 1000);
+
+  // Auto-save every 5 seconds
+  setInterval(saveGame, 5000);
+
+  // Save on page unload
+  window.addEventListener('beforeunload', saveGame);
+
+  // Expose clearSave for debugging
+  window.clearSave = clearSave;
+  console.log('Tip: Call clearSave() in console to reset progress');
 }
 
-function mousePressed() {
-  handleInput(mouseX, mouseY);
-}
-
-function touchStarted() {
-  if (touches.length > 0) {
-    handleInput(touches[0].x, touches[0].y);
-  }
-  return false; // Prevent default
-}
-
-function handleInput(x, y) {
-  // If modal is open, handle modal interactions
-  if (modalOpen) {
-    // Check close button
-    const cb = window.closeBtnBounds;
-    if (cb && x >= cb.x && x <= cb.x + cb.w && y >= cb.y && y <= cb.y + cb.h) {
-      modalOpen = false;
-      return;
-    }
-
-    // Check upgrade buttons
-    const keys = Object.keys(upgrades);
-    for (let key of keys) {
-      const u = upgrades[key];
-      const b = u.buttonBounds;
-      if (b && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
-        purchaseUpgrade(key);
-        return;
-      }
-    }
-
-    // Click outside modal closes it
-    if (x < MODAL_X || x > MODAL_X + MODAL_WIDTH || y < MODAL_Y || y > MODAL_Y + MODAL_HEIGHT) {
-      modalOpen = false;
-    }
-    return;
-  }
-
-  // Check upgrades button
-  const ub = window.upgradesBtnBounds;
-  if (ub && x >= ub.x && x <= ub.x + ub.w && y >= ub.y && y <= ub.y + ub.h) {
-    modalOpen = true;
-    return;
-  }
-
-  // Check if in top bar
-  if (y < TOP_BAR_HEIGHT) {
-    return;
-  }
-
-  // Spawn bar at tap position
-  spawnBar(x - BAR_WIDTH / 2, y - BAR_HEIGHT / 2);
-}
+document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
