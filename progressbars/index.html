@@ -25,18 +25,29 @@
     }
     #top-bar {
       background: linear-gradient(180deg, #1a1a2e 0%, #12121f 100%);
-      padding: 12px 20px;
+      padding: 10px 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 2px solid #2a2a4a;
       flex-shrink: 0;
+      flex-wrap: wrap;
+      gap: 8px;
     }
     .stat {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 14px;
+      gap: 4px;
+      font-size: 12px;
+    }
+    @media (min-width: 600px) {
+      #top-bar {
+        padding: 12px 20px;
+      }
+      .stat {
+        gap: 8px;
+        font-size: 14px;
+      }
     }
     .stat-label {
       color: #666;
@@ -87,21 +98,89 @@
     }
     #play-area {
       flex: 1;
+      width: 100%;
       background: radial-gradient(ellipse at center, #0f0f1a 0%, #0a0a12 100%);
       position: relative;
       overflow: hidden;
       cursor: crosshair;
     }
-    #sidebar {
-      width: 280px;
-      background: linear-gradient(180deg, #1a1a2e 0%, #12121f 100%);
-      border-left: 2px solid #2a2a4a;
-      overflow-y: auto;
-      flex-shrink: 0;
+    #shop-button {
+      background: linear-gradient(180deg, #4ecca3 0%, #3db892 100%);
+      border: none;
+      color: #0a0a12;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 13px;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.1s;
     }
-    .sidebar-section {
+    #shop-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 15px rgba(78, 204, 163, 0.5);
+    }
+    #shop-button:active {
+      transform: scale(0.98);
+    }
+    #modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    #modal-overlay.open {
+      display: flex;
+    }
+    #shop-modal {
+      background: linear-gradient(180deg, #1a1a2e 0%, #12121f 100%);
+      border: 2px solid #2a2a4a;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 400px;
+      max-height: 80vh;
+      overflow-y: auto;
+      position: relative;
+    }
+    #modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
       border-bottom: 1px solid #2a2a4a;
-      padding: 12px;
+      position: sticky;
+      top: 0;
+      background: linear-gradient(180deg, #1a1a2e 0%, #1a1a2e 100%);
+      z-index: 10;
+    }
+    #modal-header h2 {
+      margin: 0;
+      font-size: 18px;
+      color: #4ecca3;
+    }
+    #close-modal {
+      background: rgba(233, 69, 96, 0.2);
+      border: 1px solid #e94560;
+      color: #e94560;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      font-size: 18px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    #close-modal:hover {
+      background: rgba(233, 69, 96, 0.4);
+    }
+    .modal-section {
+      border-bottom: 1px solid #2a2a4a;
+      padding: 12px 16px;
     }
     .section-title {
       font-size: 11px;
@@ -113,7 +192,7 @@
     .upgrade-item, .unlock-item, .power-item {
       background: rgba(255,255,255,0.03);
       border-radius: 6px;
-      padding: 10px;
+      padding: 12px;
       margin-bottom: 8px;
       cursor: pointer;
       transition: all 0.15s;
@@ -336,24 +415,32 @@
         <span class="stat-label">Rate:</span>
         <span class="stat-value cooking" id="cooking-value">~0</span>
       </div>
+      <button id="shop-button">Shop</button>
     </div>
     <div id="combo-display">x1</div>
     <div id="main-content">
       <div id="play-area"></div>
-      <div id="sidebar">
-        <div class="sidebar-section" id="upgrades-section">
-          <div class="section-title">Upgrades</div>
-        </div>
-        <div class="sidebar-section" id="unlocks-section">
-          <div class="section-title">Special Bars</div>
-        </div>
-        <div class="sidebar-section" id="powers-section">
-          <div class="section-title">Chaos Powers</div>
-        </div>
-      </div>
     </div>
   </div>
   <div class="slot-full-indicator" id="slot-indicator">Manual slots full! Wait for chains...</div>
+
+  <div id="modal-overlay">
+    <div id="shop-modal">
+      <div id="modal-header">
+        <h2>Shop</h2>
+        <button id="close-modal">&times;</button>
+      </div>
+      <div class="modal-section" id="upgrades-section">
+        <div class="section-title">Upgrades</div>
+      </div>
+      <div class="modal-section" id="unlocks-section">
+        <div class="section-title">Special Bars</div>
+      </div>
+      <div class="modal-section" id="powers-section">
+        <div class="section-title">Chaos Powers</div>
+      </div>
+    </div>
+  </div>
 
 <script>
 // ============================================
@@ -1117,6 +1204,18 @@ function renderSidebar() {
 }
 
 // ============================================
+// MODAL CONTROL
+// ============================================
+function openShop() {
+  document.getElementById('modal-overlay').classList.add('open');
+  renderSidebar(); // Refresh content when opening
+}
+
+function closeShop() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+// ============================================
 // INPUT HANDLING
 // ============================================
 function handleClick(e) {
@@ -1145,6 +1244,13 @@ function init() {
     e.preventDefault();
     const touch = e.touches[0];
     handleClick({ clientX: touch.clientX, clientY: touch.clientY });
+  });
+
+  // Shop modal controls
+  document.getElementById('shop-button').addEventListener('click', openShop);
+  document.getElementById('close-modal').addEventListener('click', closeShop);
+  document.getElementById('modal-overlay').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-overlay') closeShop(); // Click outside to close
   });
 
   updateUI();
