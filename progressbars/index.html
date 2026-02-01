@@ -5,419 +5,128 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Progress Bar Clicker</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      user-select: none;
-    }
-    body {
-      background: #0a0a12;
-      color: #fff;
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      overflow: hidden;
-      height: 100vh;
-    }
-    #game-container {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body { background: #0a0a12; color: #fff; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; height: 100vh; }
+    #game-container { display: flex; flex-direction: column; height: 100vh; }
     #top-bar {
       background: linear-gradient(180deg, #1a1a2e 0%, #12121f 100%);
-      padding: 10px 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 2px solid #2a2a4a;
-      flex-shrink: 0;
-      flex-wrap: wrap;
-      gap: 8px;
+      padding: 10px 12px; display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 2px solid #2a2a4a; flex-shrink: 0; flex-wrap: wrap; gap: 8px;
     }
-    .stat {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 12px;
-    }
-    @media (min-width: 600px) {
-      #top-bar { padding: 12px 20px; }
-      .stat { gap: 8px; font-size: 14px; }
-    }
+    .stat { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+    @media (min-width: 600px) { #top-bar { padding: 12px 20px; } .stat { gap: 8px; font-size: 14px; } }
     .stat-label { color: #666; }
     .stat-value { font-weight: bold; color: #4ecca3; }
     .stat-value.slots { color: #7eb8da; }
     .stat-value.shards { color: #e94560; }
     .stat-value.cooking { color: #ff9800; font-style: italic; }
-
     #combo-display {
-      position: fixed;
-      top: 70px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 32px;
-      font-weight: bold;
-      color: #ff6b6b;
+      position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
+      font-size: 32px; font-weight: bold; color: #ff6b6b;
       text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
-      opacity: 0;
-      transition: opacity 0.2s, transform 0.2s;
-      z-index: 100;
-      pointer-events: none;
+      opacity: 0; transition: opacity 0.2s, transform 0.2s; z-index: 100; pointer-events: none;
     }
     #combo-display.active { opacity: 1; }
     #combo-display.pulse { animation: combo-pulse 0.15s ease-out; }
-    @keyframes combo-pulse {
-      0% { transform: translateX(-50%) scale(1); }
-      50% { transform: translateX(-50%) scale(1.3); }
-      100% { transform: translateX(-50%) scale(1); }
-    }
-
-    #main-content {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-    }
-    #play-area {
-      flex: 1;
-      width: 100%;
-      background: radial-gradient(ellipse at center, #0f0f1a 0%, #0a0a12 100%);
-      position: relative;
-      overflow: hidden;
-      cursor: crosshair;
-    }
-
-    /* Particle canvas overlay */
-    #fx-canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 60;
-    }
-
-    /* Screen shake */
-    #play-area.shake-light {
-      animation: shake-light 0.15s ease-out;
-    }
-    #play-area.shake-heavy {
-      animation: shake-heavy 0.25s ease-out;
-    }
-    @keyframes shake-light {
-      0% { transform: translate(0,0); }
-      25% { transform: translate(-2px, 1px); }
-      50% { transform: translate(2px, -1px); }
-      75% { transform: translate(-1px, 2px); }
-      100% { transform: translate(0,0); }
-    }
-    @keyframes shake-heavy {
-      0% { transform: translate(0,0); }
-      15% { transform: translate(-4px, 3px); }
-      30% { transform: translate(4px, -2px); }
-      45% { transform: translate(-3px, -3px); }
-      60% { transform: translate(3px, 4px); }
-      75% { transform: translate(-2px, -1px); }
-      100% { transform: translate(0,0); }
-    }
-
-    /* Mega boost vignette overlay */
-    #mega-overlay {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      pointer-events: none;
-      z-index: 55;
-      opacity: 0;
-      transition: opacity 0.4s;
-      background: radial-gradient(ellipse at center, transparent 40%, rgba(255, 150, 0, 0.12) 100%);
-    }
-    #mega-overlay.active {
-      opacity: 1;
-      animation: mega-pulse 2s ease-in-out infinite;
-    }
-    @keyframes mega-pulse {
-      0%, 100% { background: radial-gradient(ellipse at center, transparent 40%, rgba(255, 150, 0, 0.08) 100%); }
-      50% { background: radial-gradient(ellipse at center, transparent 30%, rgba(255, 150, 0, 0.18) 100%); }
-    }
-
-    /* Crit screen flash */
-    #crit-flash-overlay {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      pointer-events: none;
-      z-index: 56;
-      opacity: 0;
-      background: radial-gradient(ellipse at center, rgba(255, 82, 82, 0.25) 0%, transparent 70%);
-    }
-    #crit-flash-overlay.flash {
-      animation: crit-screen-flash 0.3s ease-out forwards;
-    }
-    @keyframes crit-screen-flash {
-      0% { opacity: 1; }
-      100% { opacity: 0; }
-    }
-
-    /* Click ripple */
-    .click-ripple {
-      position: absolute;
-      width: 30px;
-      height: 30px;
-      border: 2px solid rgba(126, 184, 218, 0.6);
-      border-radius: 50%;
-      pointer-events: none;
-      animation: ripple-expand 0.5s ease-out forwards;
-      z-index: 5;
-    }
-    @keyframes ripple-expand {
-      0% { transform: scale(0.3); opacity: 1; }
-      100% { transform: scale(3); opacity: 0; }
-    }
-
-    /* Spawn flash on new bars */
-    .progress-bar.spawn-flash {
-      animation: bar-spawn 0.3s ease-out;
-    }
-    @keyframes bar-spawn {
-      0% { transform: scale(0.5); opacity: 0; filter: brightness(2); }
-      60% { transform: scale(1.08); opacity: 1; filter: brightness(1.5); }
-      100% { transform: scale(1); opacity: 1; filter: brightness(1); }
-    }
-
-    #shop-button {
-      background: linear-gradient(180deg, #4ecca3 0%, #3db892 100%);
-      border: none;
-      color: #0a0a12;
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-weight: bold;
-      font-size: 13px;
-      cursor: pointer;
-      transition: transform 0.1s, box-shadow 0.1s;
-    }
-    #shop-button:hover {
-      transform: scale(1.05);
-      box-shadow: 0 0 15px rgba(78, 204, 163, 0.5);
-    }
-    #shop-button:active { transform: scale(0.98); }
-
-    #modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
-      z-index: 1000;
-      display: none;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-    }
-    #modal-overlay.open { display: flex; }
-    #shop-modal {
-      background: linear-gradient(180deg, #1a1a2e 0%, #12121f 100%);
-      border: 2px solid #2a2a4a;
-      border-radius: 12px;
-      width: 100%;
-      max-width: 400px;
-      max-height: 80vh;
-      overflow-y: auto;
-      position: relative;
-    }
-    #modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px;
-      border-bottom: 1px solid #2a2a4a;
-      position: sticky;
-      top: 0;
-      background: linear-gradient(180deg, #1a1a2e 0%, #1a1a2e 100%);
-      z-index: 10;
-    }
-    #modal-header h2 { margin: 0; font-size: 18px; color: #4ecca3; }
-    #close-modal {
-      background: rgba(233, 69, 96, 0.2);
-      border: 1px solid #e94560;
-      color: #e94560;
-      width: 32px; height: 32px;
-      border-radius: 6px;
-      font-size: 18px;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    #close-modal:hover { background: rgba(233, 69, 96, 0.4); }
-    .modal-section { border-bottom: 1px solid #2a2a4a; padding: 12px 16px; }
-    .section-title { font-size: 11px; text-transform: uppercase; color: #666; margin-bottom: 10px; letter-spacing: 1px; }
-
-    .upgrade-item, .unlock-item, .power-item {
-      background: rgba(255,255,255,0.03);
-      border-radius: 6px;
-      padding: 12px;
-      margin-bottom: 8px;
-      cursor: pointer;
-      transition: all 0.15s;
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-    .upgrade-item:hover:not(.disabled):not(.maxed),
-    .unlock-item:hover:not(.disabled):not(.unlocked),
-    .power-item:hover:not(.disabled) {
-      border-color: #4ecca3;
-      background: rgba(78, 204, 163, 0.1);
-    }
-    .upgrade-item.disabled, .unlock-item.disabled, .power-item.disabled { opacity: 0.4; cursor: not-allowed; }
-    .upgrade-item.maxed { opacity: 0.6; cursor: default; border-color: #4ecca3; }
-    .unlock-item.unlocked { border-color: #4ecca3; cursor: default; }
-    .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-    .item-name { font-weight: bold; font-size: 13px; }
-    .item-level { font-size: 11px; color: #666; }
-    .item-values { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 6px; }
-    .current-value { color: #4ecca3; }
-    .arrow { color: #444; }
-    .next-value { color: #7eb8da; }
-    .item-cost { font-size: 11px; color: #e94560; }
-    .item-cost.affordable { color: #4ecca3; }
-    .unlock-badge { background: #4ecca3; color: #0a0a12; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; }
-    .item-description { font-size: 11px; color: #666; margin-top: 4px; }
-    .power-timer { font-size: 11px; color: #ff9800; margin-top: 4px; }
-
-    /* Progress bar styles */
-    .progress-bar {
-      position: absolute;
-      height: 26px;
-      border-radius: 4px;
-      overflow: visible;
-      border: 2px solid rgba(255,255,255,0.2);
-      transition: border-color 0.1s;
-      width: 140px;
-    }
-    .progress-bar-inner {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      border-radius: 2px;
-      overflow: hidden;
-      background: #1a1a2e;
-    }
-    .progress-bar.manual { border-color: rgba(126, 184, 218, 0.5); }
-    .progress-bar.chain { border-color: rgba(78, 204, 163, 0.5); }
-    .progress-bar.depth-2 { border-color: rgba(255, 193, 7, 0.6); }
-    .progress-bar.depth-3 { border-color: rgba(255, 152, 0, 0.7); }
-    .progress-bar.depth-4 { border-color: rgba(255, 87, 34, 0.8); }
-    .progress-bar.depth-5 { border-color: rgba(233, 30, 99, 0.9); }
-    .progress-bar.crit-flash {
-      border-color: #ff5252 !important;
-      box-shadow: 0 0 15px rgba(255, 82, 82, 0.8);
-    }
-    .progress-bar.boost-bar {
-      border-color: rgba(255, 215, 0, 0.8) !important;
-      box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
-      animation: boost-glow 1s ease-in-out infinite alternate;
-    }
-    @keyframes boost-glow {
-      from { box-shadow: 0 0 8px rgba(255, 215, 0, 0.3); }
-      to   { box-shadow: 0 0 18px rgba(255, 215, 0, 0.7); }
-    }
-    .bar-fill.boost-bar {
-      background: linear-gradient(90deg, #d4a017, #ffd700, #d4a017) !important;
-      background-size: 200% 100%;
-      animation: boost-shimmer 1.5s linear infinite;
-    }
-    @keyframes boost-shimmer {
-      0%   { background-position: 0% 0; }
-      100% { background-position: 200% 0; }
-    }
-    .progress-bar.cascade-bar {
-      border-color: transparent !important;
-      box-shadow: 0 0 14px rgba(180, 100, 255, 0.5);
-      animation: cascade-border 2s linear infinite;
-      border-image: linear-gradient(90deg, #ff6b6b, #ffd700, #4ecca3, #7eb8da, #c77dff) 1;
-    }
-    @keyframes cascade-border {
-      0%   { filter: hue-rotate(0deg); }
-      100% { filter: hue-rotate(360deg); }
-    }
-    .bar-fill.cascade-bar {
-      background: linear-gradient(90deg, #ff6b6b, #ffd700, #4ecca3, #7eb8da, #c77dff) !important;
-      background-size: 300% 100%;
-      animation: cascade-fill 2s linear infinite;
-    }
-    @keyframes cascade-fill {
-      0%   { background-position: 0% 0; }
-      100% { background-position: 300% 0; }
-    }
-
-    .bar-fill {
-      height: 100%;
-      transition: width 0.05s linear;
-      position: relative;
-    }
-    .bar-fill.manual { background: linear-gradient(90deg, #5a8fba, #7eb8da); }
-    .bar-fill.chain { background: linear-gradient(90deg, #3d9970, #4ecca3); }
-    .bar-fill.depth-2 { background: linear-gradient(90deg, #f39c12, #f1c40f); }
-    .bar-fill.depth-3 { background: linear-gradient(90deg, #e67e22, #ff9800); }
-    .bar-fill.depth-4 { background: linear-gradient(90deg, #e74c3c, #ff5722); }
-    .bar-fill.depth-5 { background: linear-gradient(90deg, #c0392b, #e91e63); }
-
-    .depth-indicator {
-      position: absolute;
-      top: -18px; left: 4px;
-      font-size: 10px;
-      color: rgba(255,255,255,0.7);
-      font-weight: bold;
-    }
-    .floating-text {
-      position: absolute;
-      font-weight: bold;
-      pointer-events: none;
-      animation: float-up 1.2s ease-out forwards;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-      z-index: 50;
-    }
-    .floating-text.normal { color: #fff; font-size: 16px; }
-    .floating-text.combo { color: #ff6b6b; font-size: 20px; }
-    .floating-text.crit { color: #ff5252; font-size: 24px; }
-    .floating-text.depth { color: #ffd700; font-size: 18px; }
-    .floating-text.shard-gain { color: #e94560; font-size: 14px; }
-    @keyframes float-up {
-      0% { opacity: 1; transform: translateY(0) scale(1); }
-      50% { opacity: 1; transform: translateY(-20px) scale(1.1); }
-      100% { opacity: 0; transform: translateY(-50px) scale(0.8); }
-    }
-    .slot-full-indicator {
-      position: fixed;
-      bottom: 20px; left: 50%;
-      transform: translateX(-50%);
-      background: rgba(233, 69, 96, 0.9);
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 12px;
-      opacity: 0;
-      transition: opacity 0.3s;
-      pointer-events: none;
-    }
-    .slot-full-indicator.show { opacity: 1; }
+    @keyframes combo-pulse { 0% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.3); } 100% { transform: translateX(-50%) scale(1); } }
+    #main-content { display: flex; flex: 1; overflow: hidden; }
+    #play-area { flex: 1; width: 100%; position: relative; overflow: hidden; cursor: crosshair; background: radial-gradient(ellipse at center, #0f0f1a 0%, #0a0a12 100%); }
+    #fx-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 60; }
+    #play-area.shake-light { animation: shake-light 0.15s ease-out; }
+    #play-area.shake-heavy { animation: shake-heavy 0.25s ease-out; }
+    @keyframes shake-light { 0%{transform:translate(0,0)}25%{transform:translate(-2px,1px)}50%{transform:translate(2px,-1px)}75%{transform:translate(-1px,2px)}100%{transform:translate(0,0)} }
+    @keyframes shake-heavy { 0%{transform:translate(0,0)}15%{transform:translate(-4px,3px)}30%{transform:translate(4px,-2px)}45%{transform:translate(-3px,-3px)}60%{transform:translate(3px,4px)}75%{transform:translate(-2px,-1px)}100%{transform:translate(0,0)} }
+    #mega-overlay { position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:55;opacity:0;transition:opacity 0.4s;background:radial-gradient(ellipse at center,transparent 40%,rgba(255,150,0,0.12) 100%); }
+    #mega-overlay.active { opacity:1;animation:mega-pulse 2s ease-in-out infinite; }
+    @keyframes mega-pulse { 0%,100%{background:radial-gradient(ellipse at center,transparent 40%,rgba(255,150,0,0.08) 100%)}50%{background:radial-gradient(ellipse at center,transparent 30%,rgba(255,150,0,0.18) 100%)} }
+    #crit-flash-overlay { position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:56;opacity:0;background:radial-gradient(ellipse at center,rgba(255,82,82,0.25) 0%,transparent 70%); }
+    #crit-flash-overlay.flash { animation:crit-screen-flash 0.3s ease-out forwards; }
+    @keyframes crit-screen-flash { 0%{opacity:1}100%{opacity:0} }
+    .click-ripple { position:absolute;width:30px;height:30px;border:2px solid rgba(126,184,218,0.6);border-radius:50%;pointer-events:none;animation:ripple-expand 0.5s ease-out forwards;z-index:5; }
+    @keyframes ripple-expand { 0%{transform:scale(0.3);opacity:1}100%{transform:scale(3);opacity:0} }
+    .progress-bar.spawn-flash { animation:bar-spawn 0.3s ease-out; }
+    @keyframes bar-spawn { 0%{transform:scale(0.5);opacity:0;filter:brightness(2)}60%{transform:scale(1.08);opacity:1;filter:brightness(1.5)}100%{transform:scale(1);opacity:1;filter:brightness(1)} }
+    #shop-button { background:linear-gradient(180deg,#4ecca3 0%,#3db892 100%);border:none;color:#0a0a12;padding:8px 16px;border-radius:6px;font-weight:bold;font-size:13px;cursor:pointer;transition:transform 0.1s,box-shadow 0.1s; }
+    #shop-button:hover { transform:scale(1.05);box-shadow:0 0 15px rgba(78,204,163,0.5); }
+    #shop-button:active { transform:scale(0.98); }
+    #modal-overlay { position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:1000;display:none;justify-content:center;align-items:center;padding:20px; }
+    #modal-overlay.open { display:flex; }
+    #shop-modal { background:linear-gradient(180deg,#1a1a2e 0%,#12121f 100%);border:2px solid #2a2a4a;border-radius:12px;width:100%;max-width:400px;max-height:80vh;overflow-y:auto;position:relative; }
+    #modal-header { display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid #2a2a4a;position:sticky;top:0;background:linear-gradient(180deg,#1a1a2e 0%,#1a1a2e 100%);z-index:10; }
+    #modal-header h2 { margin:0;font-size:18px;color:#4ecca3; }
+    #close-modal { background:rgba(233,69,96,0.2);border:1px solid #e94560;color:#e94560;width:32px;height:32px;border-radius:6px;font-size:18px;cursor:pointer;transition:background 0.15s; }
+    #close-modal:hover { background:rgba(233,69,96,0.4); }
+    .modal-section { border-bottom:1px solid #2a2a4a;padding:12px 16px; }
+    .section-title { font-size:11px;text-transform:uppercase;color:#666;margin-bottom:10px;letter-spacing:1px; }
+    .upgrade-item,.unlock-item,.power-item { background:rgba(255,255,255,0.03);border-radius:6px;padding:12px;margin-bottom:8px;cursor:pointer;transition:all 0.15s;border:1px solid rgba(255,255,255,0.08); }
+    .upgrade-item:hover:not(.disabled):not(.maxed):not(.locked),.unlock-item:hover:not(.disabled):not(.unlocked),.power-item:hover:not(.disabled) { border-color:#4ecca3;background:rgba(78,204,163,0.1); }
+    .upgrade-item.disabled,.unlock-item.disabled,.power-item.disabled { opacity:0.4;cursor:not-allowed; }
+    .upgrade-item.maxed { opacity:0.6;cursor:default;border-color:#4ecca3; }
+    .upgrade-item.locked { opacity:0.3;cursor:default;border-color:rgba(255,255,255,0.05); }
+    .unlock-item.unlocked { border-color:#4ecca3;cursor:default; }
+    .item-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:4px; }
+    .item-name { font-weight:bold;font-size:13px; }
+    .item-level { font-size:11px;color:#666; }
+    .item-values { display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:6px; }
+    .current-value { color:#4ecca3; } .arrow { color:#444; } .next-value { color:#7eb8da; }
+    .item-cost { font-size:11px;color:#e94560; } .item-cost.affordable { color:#4ecca3; }
+    .unlock-badge { background:#4ecca3;color:#0a0a12;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold; }
+    .lock-badge { background:#444;color:#999;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold; }
+    .item-description { font-size:11px;color:#666;margin-top:4px; }
+    .power-timer { font-size:11px;color:#ff9800;margin-top:4px; }
+    .progress-bar { position:absolute;height:26px;border-radius:4px;overflow:visible;border:2px solid rgba(255,255,255,0.2);transition:border-color 0.1s;width:140px; }
+    .progress-bar-inner { position:absolute;top:0;left:0;right:0;bottom:0;border-radius:2px;overflow:hidden;background:#1a1a2e; }
+    .progress-bar.manual { border-color:rgba(126,184,218,0.5); }
+    .progress-bar.chain { border-color:rgba(78,204,163,0.5); }
+    .progress-bar.depth-2 { border-color:rgba(255,193,7,0.6); }
+    .progress-bar.depth-3 { border-color:rgba(255,152,0,0.7); }
+    .progress-bar.depth-4 { border-color:rgba(255,87,34,0.8); }
+    .progress-bar.depth-5 { border-color:rgba(233,30,99,0.9); }
+    .progress-bar.crit-flash { border-color:#ff5252!important;box-shadow:0 0 15px rgba(255,82,82,0.8); }
+    .progress-bar.boost-bar { border-color:rgba(255,215,0,0.8)!important;box-shadow:0 0 12px rgba(255,215,0,0.4);animation:boost-glow 1s ease-in-out infinite alternate; }
+    @keyframes boost-glow { from{box-shadow:0 0 8px rgba(255,215,0,0.3)}to{box-shadow:0 0 18px rgba(255,215,0,0.7)} }
+    .bar-fill.boost-bar { background:linear-gradient(90deg,#d4a017,#ffd700,#d4a017)!important;background-size:200% 100%;animation:boost-shimmer 1.5s linear infinite; }
+    @keyframes boost-shimmer { 0%{background-position:0% 0}100%{background-position:200% 0} }
+    .progress-bar.cascade-bar { border-color:transparent!important;box-shadow:0 0 14px rgba(180,100,255,0.5);animation:cascade-border 2s linear infinite;border-image:linear-gradient(90deg,#ff6b6b,#ffd700,#4ecca3,#7eb8da,#c77dff) 1; }
+    @keyframes cascade-border { 0%{filter:hue-rotate(0deg)}100%{filter:hue-rotate(360deg)} }
+    .bar-fill.cascade-bar { background:linear-gradient(90deg,#ff6b6b,#ffd700,#4ecca3,#7eb8da,#c77dff)!important;background-size:300% 100%;animation:cascade-fill 2s linear infinite; }
+    @keyframes cascade-fill { 0%{background-position:0% 0}100%{background-position:300% 0} }
+    .bar-fill { height:100%;transition:width 0.05s linear;position:relative; }
+    .bar-fill.manual { background:linear-gradient(90deg,#5a8fba,#7eb8da); }
+    .bar-fill.chain { background:linear-gradient(90deg,#3d9970,#4ecca3); }
+    .bar-fill.depth-2 { background:linear-gradient(90deg,#f39c12,#f1c40f); }
+    .bar-fill.depth-3 { background:linear-gradient(90deg,#e67e22,#ff9800); }
+    .bar-fill.depth-4 { background:linear-gradient(90deg,#e74c3c,#ff5722); }
+    .bar-fill.depth-5 { background:linear-gradient(90deg,#c0392b,#e91e63); }
+    .depth-indicator { position:absolute;top:-18px;left:4px;font-size:10px;color:rgba(255,255,255,0.7);font-weight:bold; }
+    .floating-text { position:absolute;font-weight:bold;pointer-events:none;animation:float-up 1.2s ease-out forwards;text-shadow:0 2px 4px rgba(0,0,0,0.8);z-index:50; }
+    .floating-text.normal { color:#fff;font-size:16px; }
+    .floating-text.combo { color:#ff6b6b;font-size:20px; }
+    .floating-text.crit { color:#ff5252;font-size:24px; }
+    .floating-text.depth { color:#ffd700;font-size:18px; }
+    .floating-text.shard-gain { color:#e94560;font-size:14px; }
+    .floating-text.auto-spawn { color:#00e5ff;font-size:13px; }
+    @keyframes float-up { 0%{opacity:1;transform:translateY(0) scale(1)}50%{opacity:1;transform:translateY(-20px) scale(1.1)}100%{opacity:0;transform:translateY(-50px) scale(0.8)} }
+    .slot-full-indicator { position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(233,69,96,0.9);padding:8px 16px;border-radius:20px;font-size:12px;opacity:0;transition:opacity 0.3s;pointer-events:none; }
+    .slot-full-indicator.show { opacity:1; }
+    #autobar-container { position:absolute;bottom:12px;left:50%;transform:translateX(-50%);width:80%;max-width:500px;height:20px;border-radius:10px;border:2px solid rgba(0,229,255,0.5);background:#0d1b2a;overflow:hidden;z-index:40;display:none;box-shadow:0 0 12px rgba(0,229,255,0.2); }
+    #autobar-container.active { display:block;animation:autobar-appear 0.4s ease-out; }
+    @keyframes autobar-appear { 0%{transform:translateX(-50%) scaleX(0);opacity:0}100%{transform:translateX(-50%) scaleX(1);opacity:1} }
+    #autobar-fill { height:100%;width:100%;border-radius:8px;background:linear-gradient(90deg,#006064,#00acc1,#00e5ff);background-size:200% 100%;animation:autobar-shimmer 3s linear infinite;transition:width 0.1s linear; }
+    @keyframes autobar-shimmer { 0%{background-position:200% 0}100%{background-position:0% 0} }
+    #autobar-label { position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:10px;font-weight:bold;color:rgba(255,255,255,0.8);text-shadow:0 1px 3px rgba(0,0,0,0.8);pointer-events:none; }
+    .autobar-tick-flash { position:absolute;top:0;left:0;right:0;bottom:0;border-radius:8px;background:rgba(0,229,255,0.3);pointer-events:none;animation:autobar-tick 0.3s ease-out forwards; }
+    @keyframes autobar-tick { 0%{opacity:1}100%{opacity:0} }
   </style>
 </head>
 <body>
   <div id="game-container">
     <div id="top-bar">
-      <div class="stat">
-        <span class="stat-label">Bars:</span>
-        <span class="stat-value" id="completed-bars">0</span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Slots:</span>
-        <span class="stat-value slots" id="manual-slots">0/3</span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Active:</span>
-        <span class="stat-value" id="active-bars">0</span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Shards:</span>
-        <span class="stat-value shards" id="chaos-shards">0</span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Rate:</span>
-        <span class="stat-value cooking" id="cooking-value">~0</span>
-      </div>
+      <div class="stat"><span class="stat-label">Bars:</span><span class="stat-value" id="completed-bars">0</span></div>
+      <div class="stat"><span class="stat-label">Slots:</span><span class="stat-value slots" id="manual-slots">0/3</span></div>
+      <div class="stat"><span class="stat-label">Active:</span><span class="stat-value" id="active-bars">0</span></div>
+      <div class="stat"><span class="stat-label">Shards:</span><span class="stat-value shards" id="chaos-shards">0</span></div>
+      <div class="stat"><span class="stat-label">Rate:</span><span class="stat-value cooking" id="cooking-value">~0</span></div>
       <button id="shop-button">Shop</button>
     </div>
     <div id="combo-display">x1</div>
@@ -426,806 +135,208 @@
         <canvas id="fx-canvas"></canvas>
         <div id="mega-overlay"></div>
         <div id="crit-flash-overlay"></div>
+        <div id="autobar-container"><div id="autobar-fill"></div><div id="autobar-label">AUTOBAR</div></div>
       </div>
     </div>
   </div>
-  <div class="slot-full-indicator" id="slot-indicator">Manual slots full! Wait for chains...</div>
-
+  <div class="slot-full-indicator" id="slot-indicator">Manual slots full!</div>
   <div id="modal-overlay">
     <div id="shop-modal">
-      <div id="modal-header">
-        <h2>Shop</h2>
-        <button id="close-modal">&times;</button>
-      </div>
-      <div class="modal-section" id="upgrades-section">
-        <div class="section-title">Upgrades</div>
-      </div>
-      <div class="modal-section" id="unlocks-section">
-        <div class="section-title">Special Bars</div>
-      </div>
-      <div class="modal-section" id="powers-section">
-        <div class="section-title">Chaos Powers</div>
-      </div>
+      <div id="modal-header"><h2>Shop</h2><button id="close-modal">&times;</button></div>
+      <div class="modal-section" id="upgrades-section"><div class="section-title">Upgrades</div></div>
+      <div class="modal-section" id="unlocks-section"><div class="section-title">Special Bars</div></div>
+      <div class="modal-section" id="powers-section"><div class="section-title">Chaos Powers</div></div>
     </div>
   </div>
-
 <script>
-// ============================================
-// GAME STATE
-// ============================================
-let completedBars = 0;
-let chaosShards = 0;
-const MAX_ACTIVE_BARS = 150;
-const QUEUE_TO_SHARDS_RATE = 5;
+let completedBars=0,chaosShards=0;
+const MAX_ACTIVE_BARS=150,QUEUE_TO_SHARDS_RATE=5;
+let baseFillTime=12,fillSpeedMultiplier=1,chainChance=0.08,maxChainDepth=1,barsPerCompletion=1,maxManualSlots=3,critChance=0,critMultiplier=2,multiSpawnChance=0;
+let manualBarsActive=0,activeBars=[],comboCount=0,lastCompletionTime=0;
+const COMBO_WINDOW=1500;
+let comboResetTimeout=null,megaBoostTimer=0,luckyStormCount=0,shopOpen=false;
+let autobarActive=false,autobarTimeLeft=0,autobarDuration=60,autobarSpawnInterval=3.5,autobarSpawnTimer=0;
 
-let baseFillTime = 10;
-let fillSpeedMultiplier = 1;
-let chainChance = 0.10;
-let maxChainDepth = 1;
-let barsPerCompletion = 1;
-let maxManualSlots = 3;
-let critChance = 0;
-let critMultiplier = 2;
+const particles=[],lightnings=[];
+let fxCanvas,fxCtx;
+const PC={manual:['#7eb8da','#5a8fba','#a0d0f0'],chain:['#4ecca3','#3d9970','#80ffcc'],'depth-2':['#f1c40f','#f39c12','#ffe066'],'depth-3':['#ff9800','#e67e22','#ffcc80'],'depth-4':['#ff5722','#e74c3c','#ff8a65'],'depth-5':['#e91e63','#c0392b','#ff6090'],boost:['#ffd700','#ffec80','#d4a017'],cascade:['#ff6b6b','#ffd700','#4ecca3','#7eb8da','#c77dff'],crit:['#ff5252','#ff1744','#ff8a80','#ffffff'],shard:['#e94560','#ff6b8a','#c0223b'],auto:['#00e5ff','#00acc1','#80f0ff']};
 
-let manualBarsActive = 0;
-let activeBars = [];
+function spawnExplosion(cx,cy,type,count){const c=PC[type]||PC.manual;for(let i=0;i<count;i++){const a=(Math.PI*2/count)*i+(Math.random()-0.5)*0.5,s=60+Math.random()*120;particles.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0.5+Math.random()*0.4,maxLife:0.5+Math.random()*0.4,size:2+Math.random()*3,color:c[Math.floor(Math.random()*c.length)],gravity:40+Math.random()*30,friction:0.96});}}
+function spawnSparks(cx,cy,type,count){const c=PC[type]||PC.manual;for(let i=0;i<count;i++){const a=Math.random()*Math.PI*2,s=30+Math.random()*60;particles.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-20,life:0.3+Math.random()*0.3,maxLife:0.3+Math.random()*0.3,size:1+Math.random()*1.5,color:c[Math.floor(Math.random()*c.length)],gravity:80,friction:0.94});}}
+function spawnLightning(x1,y1,x2,y2,color){const sg=[{x:x1,y:y1}],dx=x2-x1,dy=y2-y1,st=5+Math.floor(Math.random()*4);for(let i=1;i<st;i++){const t=i/st,j=12+Math.random()*8;sg.push({x:x1+dx*t+(Math.random()-0.5)*j*2,y:y1+dy*t+(Math.random()-0.5)*j*2});}sg.push({x:x2,y:y2});lightnings.push({color:color||'#4ecca3',life:0.3,maxLife:0.3,segments:sg});}
+function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.life-=dt;if(p.life<=0){particles.splice(i,1);continue;}p.vy+=p.gravity*dt;p.vx*=p.friction;p.vy*=p.friction;p.x+=p.vx*dt;p.y+=p.vy*dt;}for(let i=lightnings.length-1;i>=0;i--){lightnings[i].life-=dt;if(lightnings[i].life<=0)lightnings.splice(i,1);}}
+function drawParticles(){if(!fxCtx)return;fxCtx.clearRect(0,0,fxCanvas.width,fxCanvas.height);for(const l of lightnings){const a=l.life/l.maxLife;fxCtx.strokeStyle=l.color;fxCtx.globalAlpha=a*0.9;fxCtx.lineWidth=2;fxCtx.shadowColor=l.color;fxCtx.shadowBlur=8;fxCtx.beginPath();fxCtx.moveTo(l.segments[0].x,l.segments[0].y);for(let i=1;i<l.segments.length;i++)fxCtx.lineTo(l.segments[i].x,l.segments[i].y);fxCtx.stroke();fxCtx.globalAlpha=a*0.5;fxCtx.lineWidth=1;fxCtx.strokeStyle='#fff';fxCtx.beginPath();fxCtx.moveTo(l.segments[0].x,l.segments[0].y);for(let i=1;i<l.segments.length;i++)fxCtx.lineTo(l.segments[i].x,l.segments[i].y);fxCtx.stroke();}fxCtx.shadowBlur=0;for(const p of particles){fxCtx.globalAlpha=p.life/p.maxLife;fxCtx.fillStyle=p.color;fxCtx.beginPath();fxCtx.arc(p.x,p.y,p.size*(p.life/p.maxLife),0,Math.PI*2);fxCtx.fill();}fxCtx.globalAlpha=1;}
+function resizeFxCanvas(){if(!fxCanvas)return;const r=fxCanvas.parentElement.getBoundingClientRect();fxCanvas.width=r.width;fxCanvas.height=r.height;}
 
-let comboCount = 0;
-let lastCompletionTime = 0;
-const COMBO_WINDOW = 1500;
-let comboResetTimeout = null;
+function screenShake(i){const pa=document.getElementById('play-area'),c=i==='heavy'?'shake-heavy':'shake-light';pa.classList.remove('shake-light','shake-heavy');requestAnimationFrame(()=>{requestAnimationFrame(()=>{pa.classList.add(c);});});setTimeout(()=>pa.classList.remove(c),i==='heavy'?250:150);}
+function critScreenFlash(){const o=document.getElementById('crit-flash-overlay');o.classList.remove('flash');requestAnimationFrame(()=>{requestAnimationFrame(()=>{o.classList.add('flash');});});setTimeout(()=>o.classList.remove('flash'),300);}
+function updateMegaOverlay(){const o=document.getElementById('mega-overlay');megaBoostTimer>0?o.classList.add('active'):o.classList.remove('active');}
+function spawnClickRipple(x,y){const pa=document.getElementById('play-area'),r=document.createElement('div');r.className='click-ripple';r.style.left=(x-15)+'px';r.style.top=(y-15)+'px';pa.appendChild(r);setTimeout(()=>r.remove(),500);}
 
-let megaBoostTimer = 0;
-let luckyStormCount = 0;
-let shopOpen = false;
+const SAVE_KEY='progressBarClicker_v2';
+function saveGame(){const d={completedBars,chaosShards,upgrades:{},unlocks:{}};for(const[k,u]of Object.entries(upgrades))d.upgrades[k]=u.currentLevel;for(const[k,u]of Object.entries(specialBarUnlocks))d.unlocks[k]=u.unlocked;localStorage.setItem(SAVE_KEY,JSON.stringify(d));}
+function loadGame(){const s=localStorage.getItem(SAVE_KEY);if(!s)return false;try{const d=JSON.parse(s);completedBars=d.completedBars||0;chaosShards=d.chaosShards||0;for(let[k,lv]of Object.entries(d.upgrades||{})){if(upgrades[k]){upgrades[k].currentLevel=lv;if(lv>0&&upgrades[k].levels[lv-1])upgrades[k].apply(upgrades[k].levels[lv-1].value);}}for(const[k,v]of Object.entries(d.unlocks||{})){if(specialBarUnlocks[k])specialBarUnlocks[k].unlocked=v;}return true;}catch(e){console.error('Load failed:',e);return false;}}
+function clearSave(){localStorage.removeItem(SAVE_KEY);location.reload();}
 
-// ============================================
-// CANVAS PARTICLE SYSTEM
-// ============================================
-const particles = [];
-const lightnings = [];
-let fxCanvas, fxCtx;
-
-const PARTICLE_COLORS = {
-  manual:    ['#7eb8da', '#5a8fba', '#a0d0f0'],
-  chain:     ['#4ecca3', '#3d9970', '#80ffcc'],
-  'depth-2': ['#f1c40f', '#f39c12', '#ffe066'],
-  'depth-3': ['#ff9800', '#e67e22', '#ffcc80'],
-  'depth-4': ['#ff5722', '#e74c3c', '#ff8a65'],
-  'depth-5': ['#e91e63', '#c0392b', '#ff6090'],
-  boost:     ['#ffd700', '#ffec80', '#d4a017'],
-  cascade:   ['#ff6b6b', '#ffd700', '#4ecca3', '#7eb8da', '#c77dff'],
-  crit:      ['#ff5252', '#ff1744', '#ff8a80', '#ffffff'],
-  shard:     ['#e94560', '#ff6b8a', '#c0223b'],
+const upgrades={
+  baseValue:{name:'Base Value',currentLevel:0,levels:[{cost:15,value:2},{cost:50,value:3},{cost:150,value:4},{cost:400,value:6},{cost:1000,value:8},{cost:2500,value:11},{cost:6000,value:15},{cost:15000,value:20}],getDisplay:v=>v+' bars',getCurrentValue:()=>barsPerCompletion,apply:v=>{barsPerCompletion=v;}},
+  chainChance:{name:'Chain Chance',currentLevel:0,levels:[{cost:20,value:0.14},{cost:60,value:0.20},{cost:150,value:0.27},{cost:350,value:0.35},{cost:800,value:0.44},{cost:1800,value:0.54},{cost:4000,value:0.65},{cost:9000,value:0.77},{cost:20000,value:0.90}],getDisplay:v=>Math.floor(v*100)+'%',getCurrentValue:()=>chainChance,apply:v=>{chainChance=v;}},
+  chainDepth:{name:'Chain Depth',currentLevel:0,levels:[{cost:80,value:2},{cost:400,value:3},{cost:2000,value:4},{cost:10000,value:5}],getDisplay:v=>'Depth '+v,getCurrentValue:()=>maxChainDepth,apply:v=>{maxChainDepth=v;}},
+  multiSpawn:{name:'Multi-Spawn',currentLevel:0,requiresUpgrade:'chainChance',requiresLevel:4,levels:[{cost:1500,value:0.10},{cost:4000,value:0.20},{cost:10000,value:0.32},{cost:25000,value:0.45}],getDisplay:v=>Math.floor(v*100)+'%',getCurrentValue:()=>multiSpawnChance,apply:v=>{multiSpawnChance=v;}},
+  manualSlots:{name:'Manual Slots',currentLevel:0,levels:[{cost:30,value:4},{cost:100,value:5},{cost:300,value:7},{cost:800,value:9},{cost:2000,value:12},{cost:5000,value:15}],getDisplay:v=>v+' slots',getCurrentValue:()=>maxManualSlots,apply:v=>{maxManualSlots=v;}},
+  fillSpeed:{name:'Fill Speed',currentLevel:0,levels:[{cost:40,value:1.15},{cost:120,value:1.3},{cost:300,value:1.5},{cost:700,value:1.7},{cost:1500,value:2.0},{cost:3500,value:2.4},{cost:8000,value:2.9},{cost:18000,value:3.5}],getDisplay:v=>(baseFillTime/v).toFixed(1)+'s',getCurrentValue:()=>fillSpeedMultiplier,apply:v=>{fillSpeedMultiplier=v;}},
+  critChance:{name:'Crit Chance',currentLevel:0,levels:[{cost:150,value:0.05},{cost:500,value:0.10},{cost:1500,value:0.18},{cost:4000,value:0.25},{cost:12000,value:0.35}],getDisplay:v=>Math.floor(v*100)+'%',getCurrentValue:()=>critChance,apply:v=>{critChance=v;}},
+};
+const specialBarUnlocks={
+  boostBar:{name:'Boost Bars',cost:500,unlocked:false,spawnChance:0.05,description:'Gold bars that 2x all active bar speeds'},
+  cascadeBar:{name:'Cascade Bars',cost:2000,unlocked:false,spawnChance:0.04,description:'Rainbow bars that guarantee max depth chains'},
+};
+const chaosPowers={
+  completeAll:{name:'Complete All',cost:100,description:'Instantly finish all active bars',activate:()=>{for(let b of activeBars){if(!b.completed)b.progress=1;}}},
+  megaBoost:{name:'Mega Boost',cost:50,description:'3x bars earned for 30 seconds',activate:()=>{megaBoostTimer=30;updateMegaOverlay();}},
+  luckyStorm:{name:'Lucky Storm',cost:75,description:'Next 10 completions guarantee chains',activate:()=>{luckyStormCount=10;}},
+  autobar:{name:'Autobar',cost:30,description:'Auto-spawns bars for 60s (draining bar)',activate:()=>{startAutobar();}},
 };
 
-function spawnExplosion(cx, cy, type, count) {
-  const colors = PARTICLE_COLORS[type] || PARTICLE_COLORS.manual;
-  for (let i = 0; i < count; i++) {
-    const angle = (Math.PI * 2 / count) * i + (Math.random() - 0.5) * 0.5;
-    const speed = 60 + Math.random() * 120;
-    particles.push({
-      x: cx, y: cy,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      life: 0.5 + Math.random() * 0.4,
-      maxLife: 0.5 + Math.random() * 0.4,
-      size: 2 + Math.random() * 3,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      gravity: 40 + Math.random() * 30,
-      friction: 0.96,
-    });
+function startAutobar(){autobarActive=true;autobarTimeLeft=autobarDuration;autobarSpawnTimer=0;document.getElementById('autobar-container').classList.add('active');updateAutobarUI();}
+function processAutobar(dt){if(!autobarActive)return;autobarTimeLeft-=dt;autobarSpawnTimer+=dt;if(autobarTimeLeft<=0){autobarActive=false;autobarTimeLeft=0;document.getElementById('autobar-container').classList.remove('active');return;}if(autobarSpawnTimer>=autobarSpawnInterval){autobarSpawnTimer-=autobarSpawnInterval;autoSpawnBar();}updateAutobarUI();}
+function updateAutobarUI(){document.getElementById('autobar-fill').style.width=(autobarTimeLeft/autobarDuration*100)+'%';document.getElementById('autobar-label').textContent='AUTOBAR '+Math.ceil(autobarTimeLeft)+'s';}
+function autoSpawnBar(){if(manualBarsActive>=maxManualSlots)return;const pa=document.getElementById('play-area'),r=pa.getBoundingClientRect(),x=Math.random()*(r.width-160)+10,y=Math.random()*(r.height-80)+10;const bar=createBar(x,y,0,true);if(bar){const c=document.getElementById('autobar-container'),f=document.createElement('div');f.className='autobar-tick-flash';c.appendChild(f);setTimeout(()=>f.remove(),300);spawnSparks(x+70,y+13,'auto',5);spawnFloatingText(x+70,y-5,'AUTO','auto-spawn');}}
+
+function registerCompletion(){const now=performance.now();if(now-lastCompletionTime<COMBO_WINDOW)comboCount++;else comboCount=1;lastCompletionTime=now;if(comboResetTimeout)clearTimeout(comboResetTimeout);comboResetTimeout=setTimeout(()=>{comboCount=0;updateComboDisplay();},COMBO_WINDOW);updateComboDisplay();return comboCount;}
+function getComboMultiplier(){if(comboCount<=1)return 1;return Math.min(1+(comboCount-1)*0.2,5);}
+function updateComboDisplay(){const d=document.getElementById('combo-display');if(comboCount>1){d.textContent='x'+getComboMultiplier().toFixed(1);d.classList.add('active');d.classList.remove('pulse');requestAnimationFrame(()=>{requestAnimationFrame(()=>{d.classList.add('pulse');});});}else d.classList.remove('active');}
+function getEffectiveChainChance(depth){if(luckyStormCount>0)return 1.0;return chainChance*Math.pow(0.55,depth);}
+function getBarFxType(bar){if(bar.type==='boost')return'boost';if(bar.type==='cascade')return'cascade';if(bar.depth>=5)return'depth-5';if(bar.depth>=4)return'depth-4';if(bar.depth>=3)return'depth-3';if(bar.depth>=2)return'depth-2';if(bar.isManual)return'manual';return'chain';}
+
+function determineBarType(){const r=Math.random();let c=0;if(specialBarUnlocks.cascadeBar.unlocked){c+=specialBarUnlocks.cascadeBar.spawnChance;if(r<c)return'cascade';}if(specialBarUnlocks.boostBar.unlocked){c+=specialBarUnlocks.boostBar.spawnChance;if(r<c)return'boost';}return'normal';}
+
+function createBar(x,y,depth=0,isManual=false){
+  if(isManual){if(manualBarsActive>=maxManualSlots){showSlotFullIndicator();return null;}manualBarsActive++;}
+  if(activeBars.length>=MAX_ACTIVE_BARS){chaosShards+=QUEUE_TO_SHARDS_RATE;const r=document.getElementById('play-area').getBoundingClientRect();spawnFloatingText(Math.random()*(r.width-100)+50,Math.random()*60+20,'+'+QUEUE_TO_SHARDS_RATE+' shards','shard-gain');spawnSparks(Math.random()*r.width,Math.random()*40+10,'shard',5);if(isManual)manualBarsActive--;updateUI();return null;}
+  const pa=document.getElementById('play-area'),rect=pa.getBoundingClientRect();
+  x=Math.max(10,Math.min(x,rect.width-150));y=Math.max(10,Math.min(y,rect.height-60));
+  const barType=determineBarType(),depthClass=depth>1?`depth-${Math.min(depth,5)}`:(isManual?'manual':'chain');
+  const bar=document.createElement('div');bar.className=`progress-bar ${depthClass} spawn-flash`;
+  if(barType==='boost')bar.classList.add('boost-bar');if(barType==='cascade')bar.classList.add('cascade-bar');
+  bar.style.left=x+'px';bar.style.top=y+'px';
+  const inner=document.createElement('div');inner.className='progress-bar-inner';bar.appendChild(inner);
+  const fill=document.createElement('div');fill.className=`bar-fill ${depthClass}`;
+  if(barType==='boost')fill.classList.add('boost-bar');if(barType==='cascade')fill.classList.add('cascade-bar');
+  fill.style.width='0%';inner.appendChild(fill);
+  if(depth>0){const di=document.createElement('span');di.className='depth-indicator';di.textContent='d'+depth;bar.appendChild(di);}
+  pa.appendChild(bar);setTimeout(()=>bar.classList.remove('spawn-flash'),300);
+  if(depth>0)spawnSparks(x+70,y+13,depthClass,4);
+  const v=0.85+Math.random()*0.30,eft=baseFillTime/fillSpeedMultiplier*v;
+  const bd={element:bar,fill,progress:0,type:barType,depth,isManual,x,y,completed:false,fillTime:eft,fillRate:1/eft};
+  activeBars.push(bd);updateUI();return bd;
+}
+
+function completeBar(bar){
+  if(bar.completed)return;bar.completed=true;
+  const combo=registerCompletion(),comboMult=getComboMultiplier(),depthBonus=1+(bar.depth*0.5);
+  let earned=barsPerCompletion*depthBonus*comboMult,isCrit=false;
+  if(Math.random()<critChance){earned*=critMultiplier;isCrit=true;bar.element.classList.add('crit-flash');}
+  if(megaBoostTimer>0)earned*=3;earned=Math.floor(earned);completedBars+=earned;
+  const tt=isCrit?'crit':(combo>1?'combo':(bar.depth>0?'depth':'normal'));
+  spawnFloatingText(bar.x+70,bar.y,'+'+earned,tt);
+  const cx=bar.x+70,cy=bar.y+13,ft=getBarFxType(bar);
+  if(isCrit){spawnExplosion(cx,cy,'crit',18);screenShake('heavy');critScreenFlash();}
+  else if(bar.type==='cascade'){spawnExplosion(cx,cy,'cascade',16);screenShake('heavy');}
+  else if(bar.type==='boost'){spawnExplosion(cx,cy,'boost',14);screenShake('light');}
+  else if(bar.depth>=3){spawnExplosion(cx,cy,ft,12);screenShake('light');}
+  else spawnExplosion(cx,cy,ft,8);
+  if(bar.type==='boost'){for(let b of activeBars){if(!b.completed)b.fillRate*=2;}spawnFloatingText(bar.x+70,bar.y-20,'BOOST!','depth');}
+  else if(bar.type==='cascade'){bar.cascadeChain=true;spawnFloatingText(bar.x+70,bar.y-20,'CASCADE!','crit');}
+  rollChains(bar);if(bar.isManual)manualBarsActive--;if(luckyStormCount>0)luckyStormCount--;
+  setTimeout(()=>{bar.element.remove();const i=activeBars.indexOf(bar);if(i>-1)activeBars.splice(i,1);updateUI();},150);updateUI();
+}
+
+function rollChains(bar){
+  if(bar.depth>=maxChainDepth)return;
+  let ec,ms=0;if(bar.cascadeChain){ec=1.0;ms=2;}else ec=getEffectiveChainChance(bar.depth);
+  let cs=Math.floor(ec);const rem=ec%1;if(Math.random()<rem)cs++;cs=Math.max(cs,ms);
+  if(multiSpawnChance>0&&!bar.cascadeChain){let extra=0;for(let i=0;i<cs;i++){if(Math.random()<multiSpawnChance)extra++;}cs+=extra;}
+  const pa=document.getElementById('play-area'),rect=pa.getBoundingClientRect(),pcx=bar.x+70,pcy=bar.y+13;
+  const lc=['#4ecca3','#7eb8da','#f1c40f','#ff9800','#ff5722','#e91e63'][Math.min(bar.depth,5)];
+  for(let i=0;i<cs;i++){const ox=(Math.random()-0.5)*200,oy=(Math.random()-0.5)*100+40;
+    let nx=Math.max(10,Math.min(bar.x+ox,rect.width-150)),ny=Math.max(10,Math.min(bar.y+oy,rect.height-60));
+    spawnLightning(pcx,pcy,nx+70,ny+13,lc);
+    setTimeout(()=>{const nb=createBar(nx,ny,bar.depth+1,false);if(nb&&bar.cascadeChain)nb.cascadeChain=true;},i*50);}
+}
+
+function spawnFloatingText(x,y,text,type='normal'){const pa=document.getElementById('play-area'),ft=document.createElement('div');ft.className=`floating-text ${type}`;ft.textContent=text;ft.style.left=x+'px';ft.style.top=y+'px';pa.appendChild(ft);setTimeout(()=>ft.remove(),1200);}
+function showSlotFullIndicator(){const i=document.getElementById('slot-indicator');i.classList.add('show');setTimeout(()=>i.classList.remove('show'),1500);}
+
+let lastTime=performance.now();
+function processTime(dt){
+  if(megaBoostTimer>0){megaBoostTimer-=dt;if(megaBoostTimer<=0){megaBoostTimer=0;updateMegaOverlay();}}
+  processAutobar(dt);
+  for(let i=activeBars.length-1;i>=0;i--){const b=activeBars[i];if(b.completed)continue;b.progress+=b.fillRate*dt;if(b.progress>=1){b.progress=1;b.fill.style.width='100%';completeBar(b);}else b.fill.style.width=(b.progress*100)+'%';}
+}
+function gameLoop(){const now=performance.now(),dt=Math.min((now-lastTime)/1000,0.1);lastTime=now;processTime(dt);updateParticles(dt);drawParticles();requestAnimationFrame(gameLoop);}
+function backgroundTick(){if(document.hidden){const now=performance.now(),dt=Math.min((now-lastTime)/1000,2);lastTime=now;processTime(dt);updateUI();}}
+function handleVisibilityChange(){if(!document.hidden){lastTime=performance.now();updateUI();if(shopOpen)renderSidebar();}}
+document.addEventListener('visibilitychange',handleVisibilityChange);
+
+function isUpgradeUnlocked(k){const u=upgrades[k];if(!u.requiresUpgrade)return true;const r=upgrades[u.requiresUpgrade];return r&&r.currentLevel>=u.requiresLevel;}
+function buyUpgrade(k){if(!isUpgradeUnlocked(k))return;const u=upgrades[k];if(u.currentLevel>=u.levels.length)return;const nl=u.levels[u.currentLevel];if(completedBars<nl.cost)return;completedBars-=nl.cost;u.currentLevel++;u.apply(nl.value);updateUI();renderSidebar();saveGame();}
+function unlockSpecialBar(k){const u=specialBarUnlocks[k];if(u.unlocked||completedBars<u.cost)return;completedBars-=u.cost;u.unlocked=true;updateUI();renderSidebar();saveGame();}
+function activateChaosPower(k){const p=chaosPowers[k];if(chaosShards<p.cost)return;chaosShards-=p.cost;p.activate();updateUI();renderSidebar();saveGame();}
+
+function formatNumber(n){if(n>=1000000)return(n/1000000).toFixed(1)+'M';if(n>=1000)return(n/1000).toFixed(1)+'K';return Math.floor(n).toString();}
+function calculateBarsPerSecond(){let t=0;for(const b of activeBars){if(b.completed)continue;let v=barsPerCompletion*(1+b.depth*0.5);if(megaBoostTimer>0)v*=3;const r=(1-b.progress)/b.fillRate;if(r>0)t+=v/r;}return t;}
+function updateUI(){document.getElementById('completed-bars').textContent=formatNumber(completedBars);document.getElementById('manual-slots').textContent=manualBarsActive+'/'+maxManualSlots;document.getElementById('active-bars').textContent=activeBars.filter(b=>!b.completed).length;document.getElementById('chaos-shards').textContent=formatNumber(chaosShards);document.getElementById('cooking-value').textContent=calculateBarsPerSecond().toFixed(1)+'/s';}
+
+function renderSidebar(){
+  const us=document.getElementById('upgrades-section');us.innerHTML='<div class="section-title">Upgrades</div>';
+  for(const[key,u]of Object.entries(upgrades)){
+    const cl=u.currentLevel,mx=cl>=u.levels.length,nl=mx?null:u.levels[cl],unlocked=isUpgradeUnlocked(key),canAfford=nl&&completedBars>=nl.cost&&unlocked;
+    const item=document.createElement('div');
+    if(!unlocked)item.className='upgrade-item locked';else item.className='upgrade-item'+(mx?' maxed':(!canAfford?' disabled':''));
+    const cv=u.getCurrentValue();let vh;
+    if(!unlocked){const rq=upgrades[u.requiresUpgrade];vh=`<span class="lock-badge">Requires ${rq.name} Lv${u.requiresLevel}</span>`;}
+    else if(mx)vh=`<span class="current-value">${u.getDisplay(cv)}</span> <span style="color:#4ecca3">MAX</span>`;
+    else vh=`<span class="current-value">${u.getDisplay(cv)}</span> <span class="arrow">\u2192</span> <span class="next-value">${u.getDisplay(nl.value)}</span>`;
+    item.innerHTML=`<div class="item-header"><span class="item-name">${u.name}</span><span class="item-level">${unlocked?cl+'/'+u.levels.length:'\uD83D\uDD12'}</span></div><div class="item-values">${vh}</div>${(unlocked&&!mx)?`<div class="item-cost ${canAfford?'affordable':''}">Cost: ${formatNumber(nl.cost)} bars</div>`:''}`;
+    if(unlocked&&!mx&&canAfford)item.onclick=()=>buyUpgrade(key);us.appendChild(item);
+  }
+  const uls=document.getElementById('unlocks-section');uls.innerHTML='<div class="section-title">Special Bars</div>';
+  for(const[k,u]of Object.entries(specialBarUnlocks)){
+    const ca=completedBars>=u.cost,item=document.createElement('div');
+    item.className='unlock-item'+(u.unlocked?' unlocked':(!ca?' disabled':''));
+    item.innerHTML=`<div class="item-header"><span class="item-name">${u.name}</span>${u.unlocked?'<span class="unlock-badge">UNLOCKED</span>':''}</div><div class="item-description">${u.description}</div>${!u.unlocked?`<div class="item-cost ${ca?'affordable':''}">Cost: ${formatNumber(u.cost)} bars</div>`:''}`;
+    if(!u.unlocked&&ca)item.onclick=()=>unlockSpecialBar(k);uls.appendChild(item);
+  }
+  const ps=document.getElementById('powers-section');ps.innerHTML='<div class="section-title">Chaos Powers</div>';
+  for(const[k,p]of Object.entries(chaosPowers)){
+    const ca=chaosShards>=p.cost,item=document.createElement('div');item.className='power-item'+(!ca?' disabled':'');
+    let tm='';if(k==='megaBoost'&&megaBoostTimer>0)tm=`<div class="power-timer">Active: ${Math.ceil(megaBoostTimer)}s</div>`;
+    else if(k==='luckyStorm'&&luckyStormCount>0)tm=`<div class="power-timer">Remaining: ${luckyStormCount}</div>`;
+    else if(k==='autobar'&&autobarActive)tm=`<div class="power-timer">Running: ${Math.ceil(autobarTimeLeft)}s</div>`;
+    item.innerHTML=`<div class="item-header"><span class="item-name">${p.name}</span></div><div class="item-description">${p.description}</div><div class="item-cost shards ${ca?'affordable':''}">${p.cost} shards</div>${tm}`;
+    if(ca)item.onclick=()=>activateChaosPower(k);ps.appendChild(item);
   }
 }
 
-function spawnSparks(cx, cy, type, count) {
-  const colors = PARTICLE_COLORS[type] || PARTICLE_COLORS.manual;
-  for (let i = 0; i < count; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 30 + Math.random() * 60;
-    particles.push({
-      x: cx, y: cy,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 20,
-      life: 0.3 + Math.random() * 0.3,
-      maxLife: 0.3 + Math.random() * 0.3,
-      size: 1 + Math.random() * 1.5,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      gravity: 80,
-      friction: 0.94,
-    });
-  }
+function openShop(){shopOpen=true;document.getElementById('modal-overlay').classList.add('open');renderSidebar();}
+function closeShop(){shopOpen=false;document.getElementById('modal-overlay').classList.remove('open');}
+function handleClick(e){const pa=document.getElementById('play-area'),r=pa.getBoundingClientRect();spawnClickRipple(e.clientX-r.left,e.clientY-r.top);createBar(e.clientX-r.left-70,e.clientY-r.top-13,0,true);}
+
+function init(){
+  const loaded=loadGame();if(loaded)console.log('Game loaded from save');
+  fxCanvas=document.getElementById('fx-canvas');fxCtx=fxCanvas.getContext('2d');resizeFxCanvas();window.addEventListener('resize',resizeFxCanvas);
+  const pa=document.getElementById('play-area');pa.addEventListener('click',handleClick);
+  pa.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];handleClick({clientX:t.clientX,clientY:t.clientY});});
+  document.getElementById('shop-button').addEventListener('click',openShop);
+  document.getElementById('close-modal').addEventListener('click',closeShop);
+  document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target.id==='modal-overlay')closeShop();});
+  updateMegaOverlay();updateUI();renderSidebar();gameLoop();
+  setInterval(()=>{if(shopOpen)renderSidebar();},1000);setInterval(backgroundTick,1000);setInterval(saveGame,5000);
+  window.addEventListener('beforeunload',saveGame);window.clearSave=clearSave;
+  console.log('v2 — Tip: Call clearSave() in console to reset progress');
 }
-
-function spawnLightning(x1, y1, x2, y2, color) {
-  lightnings.push({
-    x1, y1, x2, y2,
-    color: color || '#4ecca3',
-    life: 0.3,
-    maxLife: 0.3,
-    segments: generateLightningSegments(x1, y1, x2, y2),
-  });
-}
-
-function generateLightningSegments(x1, y1, x2, y2) {
-  const segments = [{x: x1, y: y1}];
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const steps = 5 + Math.floor(Math.random() * 4);
-  for (let i = 1; i < steps; i++) {
-    const t = i / steps;
-    const jitter = 12 + Math.random() * 8;
-    segments.push({
-      x: x1 + dx * t + (Math.random() - 0.5) * jitter * 2,
-      y: y1 + dy * t + (Math.random() - 0.5) * jitter * 2,
-    });
-  }
-  segments.push({x: x2, y: y2});
-  return segments;
-}
-
-function updateParticles(dt) {
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p = particles[i];
-    p.life -= dt;
-    if (p.life <= 0) { particles.splice(i, 1); continue; }
-    p.vy += p.gravity * dt;
-    p.vx *= p.friction;
-    p.vy *= p.friction;
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-  }
-  for (let i = lightnings.length - 1; i >= 0; i--) {
-    lightnings[i].life -= dt;
-    if (lightnings[i].life <= 0) lightnings.splice(i, 1);
-  }
-}
-
-function drawParticles() {
-  if (!fxCtx) return;
-  const w = fxCanvas.width;
-  const h = fxCanvas.height;
-  fxCtx.clearRect(0, 0, w, h);
-
-  // Lightning bolts
-  for (const l of lightnings) {
-    const alpha = l.life / l.maxLife;
-    fxCtx.strokeStyle = l.color;
-    fxCtx.globalAlpha = alpha * 0.9;
-    fxCtx.lineWidth = 2;
-    fxCtx.shadowColor = l.color;
-    fxCtx.shadowBlur = 8;
-    fxCtx.beginPath();
-    fxCtx.moveTo(l.segments[0].x, l.segments[0].y);
-    for (let i = 1; i < l.segments.length; i++) {
-      fxCtx.lineTo(l.segments[i].x, l.segments[i].y);
-    }
-    fxCtx.stroke();
-    // Bright core
-    fxCtx.globalAlpha = alpha * 0.5;
-    fxCtx.lineWidth = 1;
-    fxCtx.strokeStyle = '#fff';
-    fxCtx.beginPath();
-    fxCtx.moveTo(l.segments[0].x, l.segments[0].y);
-    for (let i = 1; i < l.segments.length; i++) {
-      fxCtx.lineTo(l.segments[i].x, l.segments[i].y);
-    }
-    fxCtx.stroke();
-  }
-
-  fxCtx.shadowBlur = 0;
-
-  // Particles
-  for (const p of particles) {
-    const alpha = p.life / p.maxLife;
-    fxCtx.globalAlpha = alpha;
-    fxCtx.fillStyle = p.color;
-    fxCtx.beginPath();
-    fxCtx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
-    fxCtx.fill();
-  }
-
-  fxCtx.globalAlpha = 1;
-}
-
-function resizeFxCanvas() {
-  if (!fxCanvas) return;
-  const rect = fxCanvas.parentElement.getBoundingClientRect();
-  fxCanvas.width = rect.width;
-  fxCanvas.height = rect.height;
-}
-
-// ============================================
-// SCREEN EFFECTS
-// ============================================
-function screenShake(intensity) {
-  const playArea = document.getElementById('play-area');
-  const cls = intensity === 'heavy' ? 'shake-heavy' : 'shake-light';
-  playArea.classList.remove('shake-light', 'shake-heavy');
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => { playArea.classList.add(cls); });
-  });
-  setTimeout(() => playArea.classList.remove(cls), intensity === 'heavy' ? 250 : 150);
-}
-
-function critScreenFlash() {
-  const overlay = document.getElementById('crit-flash-overlay');
-  overlay.classList.remove('flash');
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => { overlay.classList.add('flash'); });
-  });
-  setTimeout(() => overlay.classList.remove('flash'), 300);
-}
-
-function updateMegaOverlay() {
-  const overlay = document.getElementById('mega-overlay');
-  if (megaBoostTimer > 0) overlay.classList.add('active');
-  else overlay.classList.remove('active');
-}
-
-function spawnClickRipple(x, y) {
-  const playArea = document.getElementById('play-area');
-  const ripple = document.createElement('div');
-  ripple.className = 'click-ripple';
-  ripple.style.left = (x - 15) + 'px';
-  ripple.style.top = (y - 15) + 'px';
-  playArea.appendChild(ripple);
-  setTimeout(() => ripple.remove(), 500);
-}
-
-// ============================================
-// LOCAL STORAGE
-// ============================================
-const SAVE_KEY = 'progressBarClicker_v1';
-
-function saveGame() {
-  const saveData = { completedBars, chaosShards, upgrades: {}, unlocks: {} };
-  for (const [key, upgrade] of Object.entries(upgrades)) saveData.upgrades[key] = upgrade.currentLevel;
-  for (const [key, unlock] of Object.entries(specialBarUnlocks)) saveData.unlocks[key] = unlock.unlocked;
-  localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
-}
-
-function loadGame() {
-  const saved = localStorage.getItem(SAVE_KEY);
-  if (!saved) return false;
-  try {
-    const data = JSON.parse(saved);
-    completedBars = data.completedBars || 0;
-    chaosShards = data.chaosShards || 0;
-    for (let [key, level] of Object.entries(data.upgrades || {})) {
-      if (key === 'barsPerCompletion') key = 'baseValue';
-      if (upgrades[key]) {
-        upgrades[key].currentLevel = level;
-        if (level > 0 && upgrades[key].levels[level - 1]) upgrades[key].apply(upgrades[key].levels[level - 1].value);
-      }
-    }
-    for (const [key, unlocked] of Object.entries(data.unlocks || {})) {
-      if (specialBarUnlocks[key]) specialBarUnlocks[key].unlocked = unlocked;
-    }
-    return true;
-  } catch (e) { console.error('Failed to load save:', e); return false; }
-}
-
-function clearSave() { localStorage.removeItem(SAVE_KEY); location.reload(); }
-
-// ============================================
-// UPGRADES
-// ============================================
-const upgrades = {
-  baseValue: {
-    name: 'Base Value', currentLevel: 0,
-    levels: [{ cost: 10, value: 2 },{ cost: 35, value: 3 },{ cost: 100, value: 5 },{ cost: 300, value: 8 },{ cost: 900, value: 12 }],
-    getDisplay: (val) => val + ' bars', getCurrentValue: () => barsPerCompletion, apply: (val) => { barsPerCompletion = val; }
-  },
-  chainChance: {
-    name: 'Chain Chance', currentLevel: 0,
-    levels: [{ cost: 15, value: 0.20 },{ cost: 40, value: 0.35 },{ cost: 100, value: 0.50 },{ cost: 250, value: 0.70 },{ cost: 600, value: 0.90 },{ cost: 1500, value: 1.10 }],
-    getDisplay: (val) => Math.floor(val * 100) + '%', getCurrentValue: () => chainChance, apply: (val) => { chainChance = val; }
-  },
-  chainDepth: {
-    name: 'Chain Depth', currentLevel: 0,
-    levels: [{ cost: 50, value: 2 },{ cost: 200, value: 3 },{ cost: 800, value: 4 },{ cost: 3000, value: 5 }],
-    getDisplay: (val) => 'Depth ' + val, getCurrentValue: () => maxChainDepth, apply: (val) => { maxChainDepth = val; }
-  },
-  manualSlots: {
-    name: 'Manual Slots', currentLevel: 0,
-    levels: [{ cost: 25, value: 4 },{ cost: 80, value: 5 },{ cost: 200, value: 7 },{ cost: 500, value: 10 }],
-    getDisplay: (val) => val + ' slots', getCurrentValue: () => maxManualSlots, apply: (val) => { maxManualSlots = val; }
-  },
-  fillSpeed: {
-    name: 'Fill Speed', currentLevel: 0,
-    levels: [{ cost: 60, value: 1.3 },{ cost: 200, value: 1.7 },{ cost: 600, value: 2.2 },{ cost: 2000, value: 3.0 }],
-    getDisplay: (val) => (baseFillTime / val).toFixed(1) + 's', getCurrentValue: () => fillSpeedMultiplier, apply: (val) => { fillSpeedMultiplier = val; }
-  },
-  critChance: {
-    name: 'Crit Chance', currentLevel: 0,
-    levels: [{ cost: 100, value: 0.08 },{ cost: 400, value: 0.18 },{ cost: 1500, value: 0.30 }],
-    getDisplay: (val) => Math.floor(val * 100) + '%', getCurrentValue: () => critChance, apply: (val) => { critChance = val; }
-  },
-};
-
-// ============================================
-// SPECIAL BAR UNLOCKS
-// ============================================
-const specialBarUnlocks = {
-  boostBar: { name: 'Boost Bars', cost: 300, unlocked: false, spawnChance: 0.05, description: 'Gold bars that 2x all active bar speeds' },
-  cascadeBar: { name: 'Cascade Bars', cost: 1000, unlocked: false, spawnChance: 0.04, description: 'Rainbow bars that guarantee max depth chains' },
-};
-
-// ============================================
-// CHAOS POWERS
-// ============================================
-const chaosPowers = {
-  completeAll: {
-    name: 'Complete All', cost: 100, description: 'Instantly finish all active bars',
-    activate: () => { for (let bar of activeBars) { if (!bar.completed) bar.progress = 1; } }
-  },
-  megaBoost: {
-    name: 'Mega Boost', cost: 50, description: '3x bars earned for 30 seconds',
-    activate: () => { megaBoostTimer = 30; updateMegaOverlay(); }
-  },
-  luckyStorm: {
-    name: 'Lucky Storm', cost: 75, description: 'Next 10 completions guarantee chains',
-    activate: () => { luckyStormCount = 10; }
-  },
-};
-
-// ============================================
-// COMBO SYSTEM
-// ============================================
-function registerCompletion() {
-  const now = performance.now();
-  if (now - lastCompletionTime < COMBO_WINDOW) comboCount++;
-  else comboCount = 1;
-  lastCompletionTime = now;
-  if (comboResetTimeout) clearTimeout(comboResetTimeout);
-  comboResetTimeout = setTimeout(() => { comboCount = 0; updateComboDisplay(); }, COMBO_WINDOW);
-  updateComboDisplay();
-  return comboCount;
-}
-
-function getComboMultiplier() {
-  if (comboCount <= 1) return 1;
-  return 1 + (comboCount - 1) * 0.5;
-}
-
-function updateComboDisplay() {
-  const display = document.getElementById('combo-display');
-  if (comboCount > 1) {
-    display.textContent = 'x' + getComboMultiplier().toFixed(1);
-    display.classList.add('active');
-    display.classList.remove('pulse');
-    requestAnimationFrame(() => { requestAnimationFrame(() => { display.classList.add('pulse'); }); });
-  } else {
-    display.classList.remove('active');
-  }
-}
-
-// ============================================
-// CHAIN DAMPENING
-// ============================================
-function getEffectiveChainChance(depth) {
-  if (luckyStormCount > 0) return 1.0;
-  return chainChance * Math.pow(0.7, depth);
-}
-
-// ============================================
-// HELPER
-// ============================================
-function getBarFxType(bar) {
-  if (bar.type === 'boost') return 'boost';
-  if (bar.type === 'cascade') return 'cascade';
-  if (bar.depth >= 5) return 'depth-5';
-  if (bar.depth >= 4) return 'depth-4';
-  if (bar.depth >= 3) return 'depth-3';
-  if (bar.depth >= 2) return 'depth-2';
-  if (bar.isManual) return 'manual';
-  return 'chain';
-}
-
-// ============================================
-// BAR CREATION & MANAGEMENT
-// ============================================
-function determineBarType() {
-  const roll = Math.random();
-  let cumulative = 0;
-  if (specialBarUnlocks.cascadeBar.unlocked) { cumulative += specialBarUnlocks.cascadeBar.spawnChance; if (roll < cumulative) return 'cascade'; }
-  if (specialBarUnlocks.boostBar.unlocked) { cumulative += specialBarUnlocks.boostBar.spawnChance; if (roll < cumulative) return 'boost'; }
-  return 'normal';
-}
-
-function createBar(x, y, depth = 0, isManual = false) {
-  if (isManual) {
-    if (manualBarsActive >= maxManualSlots) { showSlotFullIndicator(); return null; }
-    manualBarsActive++;
-  }
-
-  if (activeBars.length >= MAX_ACTIVE_BARS) {
-    chaosShards += QUEUE_TO_SHARDS_RATE;
-    const paRect = document.getElementById('play-area').getBoundingClientRect();
-    spawnFloatingText(Math.random() * (paRect.width - 100) + 50, Math.random() * 60 + 20, '+' + QUEUE_TO_SHARDS_RATE + ' shards', 'shard-gain');
-    spawnSparks(Math.random() * paRect.width, Math.random() * 40 + 10, 'shard', 5);
-    if (isManual) manualBarsActive--;
-    updateUI();
-    return null;
-  }
-
-  const playArea = document.getElementById('play-area');
-  const rect = playArea.getBoundingClientRect();
-  x = Math.max(10, Math.min(x, rect.width - 150));
-  y = Math.max(10, Math.min(y, rect.height - 36));
-
-  const barType = determineBarType();
-  const depthClass = depth > 1 ? `depth-${Math.min(depth, 5)}` : (isManual ? 'manual' : 'chain');
-
-  const bar = document.createElement('div');
-  bar.className = `progress-bar ${depthClass} spawn-flash`;
-  if (barType === 'boost') bar.classList.add('boost-bar');
-  if (barType === 'cascade') bar.classList.add('cascade-bar');
-  bar.style.left = x + 'px';
-  bar.style.top = y + 'px';
-
-  const inner = document.createElement('div');
-  inner.className = 'progress-bar-inner';
-  bar.appendChild(inner);
-
-  const fill = document.createElement('div');
-  fill.className = `bar-fill ${depthClass}`;
-  if (barType === 'boost') fill.classList.add('boost-bar');
-  if (barType === 'cascade') fill.classList.add('cascade-bar');
-  fill.style.width = '0%';
-  inner.appendChild(fill);
-
-  if (depth > 0) {
-    const depthIndicator = document.createElement('span');
-    depthIndicator.className = 'depth-indicator';
-    depthIndicator.textContent = 'd' + depth;
-    bar.appendChild(depthIndicator);
-  }
-
-  playArea.appendChild(bar);
-  setTimeout(() => bar.classList.remove('spawn-flash'), 300);
-
-  // Entry sparks for chain bars
-  if (depth > 0) spawnSparks(x + 70, y + 13, depthClass, 4);
-
-  const variance = 0.85 + Math.random() * 0.30;
-  const effectiveFillTime = baseFillTime / fillSpeedMultiplier * variance;
-
-  const barData = {
-    element: bar, fill: fill, progress: 0, type: barType,
-    depth: depth, isManual: isManual, x: x, y: y,
-    completed: false, fillTime: effectiveFillTime, fillRate: 1 / effectiveFillTime,
-  };
-
-  activeBars.push(barData);
-  updateUI();
-  return barData;
-}
-
-function completeBar(bar) {
-  if (bar.completed) return;
-  bar.completed = true;
-
-  const combo = registerCompletion();
-  const comboMult = getComboMultiplier();
-  const depthBonus = 1 + (bar.depth * 0.5);
-  let earned = barsPerCompletion * depthBonus * comboMult;
-  let isCrit = false;
-
-  if (Math.random() < critChance) { earned *= critMultiplier; isCrit = true; bar.element.classList.add('crit-flash'); }
-  if (megaBoostTimer > 0) earned *= 3;
-  earned = Math.floor(earned);
-  completedBars += earned;
-
-  const textType = isCrit ? 'crit' : (combo > 1 ? 'combo' : (bar.depth > 0 ? 'depth' : 'normal'));
-  spawnFloatingText(bar.x + 70, bar.y, '+' + earned, textType);
-
-  // === EFFECTS ===
-  const cx = bar.x + 70;
-  const cy = bar.y + 13;
-  const fxType = getBarFxType(bar);
-
-  if (isCrit) {
-    spawnExplosion(cx, cy, 'crit', 18);
-    screenShake('heavy');
-    critScreenFlash();
-  } else if (bar.type === 'cascade') {
-    spawnExplosion(cx, cy, 'cascade', 16);
-    screenShake('heavy');
-  } else if (bar.type === 'boost') {
-    spawnExplosion(cx, cy, 'boost', 14);
-    screenShake('light');
-  } else if (bar.depth >= 3) {
-    spawnExplosion(cx, cy, fxType, 12);
-    screenShake('light');
-  } else {
-    spawnExplosion(cx, cy, fxType, 8);
-  }
-
-  if (bar.type === 'boost') {
-    for (let b of activeBars) { if (!b.completed) b.fillRate *= 2; }
-    spawnFloatingText(bar.x + 70, bar.y - 20, 'BOOST!', 'depth');
-  } else if (bar.type === 'cascade') {
-    bar.cascadeChain = true;
-    spawnFloatingText(bar.x + 70, bar.y - 20, 'CASCADE!', 'crit');
-  }
-
-  rollChains(bar);
-  if (bar.isManual) manualBarsActive--;
-  if (luckyStormCount > 0) luckyStormCount--;
-
-  setTimeout(() => {
-    bar.element.remove();
-    const idx = activeBars.indexOf(bar);
-    if (idx > -1) activeBars.splice(idx, 1);
-    updateUI();
-  }, 150);
-
-  updateUI();
-}
-
-function rollChains(bar) {
-  if (bar.depth >= maxChainDepth) return;
-
-  let effectiveChance, minSpawns = 0;
-  if (bar.cascadeChain) { effectiveChance = 1.0; minSpawns = 2; }
-  else effectiveChance = getEffectiveChainChance(bar.depth);
-
-  let chainsToSpawn = Math.floor(effectiveChance);
-  const remainingChance = effectiveChance % 1;
-  if (Math.random() < remainingChance) chainsToSpawn++;
-  chainsToSpawn = Math.max(chainsToSpawn, minSpawns);
-
-  const playArea = document.getElementById('play-area');
-  const rect = playArea.getBoundingClientRect();
-  const parentCx = bar.x + 70;
-  const parentCy = bar.y + 13;
-
-  const lightningColors = ['#4ecca3', '#7eb8da', '#f1c40f', '#ff9800', '#ff5722', '#e91e63'];
-  const lColor = lightningColors[Math.min(bar.depth, lightningColors.length - 1)];
-
-  for (let i = 0; i < chainsToSpawn; i++) {
-    const offsetX = (Math.random() - 0.5) * 200;
-    const offsetY = (Math.random() - 0.5) * 100 + 40;
-    let newX = Math.max(10, Math.min(bar.x + offsetX, rect.width - 150));
-    let newY = Math.max(10, Math.min(bar.y + offsetY, rect.height - 36));
-
-    // Chain lightning
-    spawnLightning(parentCx, parentCy, newX + 70, newY + 13, lColor);
-
-    setTimeout(() => {
-      const newBar = createBar(newX, newY, bar.depth + 1, false);
-      if (newBar && bar.cascadeChain) newBar.cascadeChain = true;
-    }, i * 50);
-  }
-}
-
-function spawnFloatingText(x, y, text, type = 'normal') {
-  const playArea = document.getElementById('play-area');
-  const ft = document.createElement('div');
-  ft.className = `floating-text ${type}`;
-  ft.textContent = text;
-  ft.style.left = x + 'px';
-  ft.style.top = y + 'px';
-  playArea.appendChild(ft);
-  setTimeout(() => ft.remove(), 1200);
-}
-
-function showSlotFullIndicator() {
-  const indicator = document.getElementById('slot-indicator');
-  indicator.classList.add('show');
-  setTimeout(() => indicator.classList.remove('show'), 1500);
-}
-
-// ============================================
-// GAME LOOP
-// ============================================
-let lastTime = performance.now();
-
-function processTime(dt) {
-  if (megaBoostTimer > 0) {
-    megaBoostTimer -= dt;
-    if (megaBoostTimer <= 0) { megaBoostTimer = 0; updateMegaOverlay(); }
-  }
-
-  for (let i = activeBars.length - 1; i >= 0; i--) {
-    const bar = activeBars[i];
-    if (bar.completed) continue;
-    bar.progress += bar.fillRate * dt;
-    if (bar.progress >= 1) {
-      bar.progress = 1;
-      bar.fill.style.width = '100%';
-      completeBar(bar);
-    } else {
-      bar.fill.style.width = (bar.progress * 100) + '%';
-    }
-  }
-}
-
-function gameLoop() {
-  const now = performance.now();
-  const dt = Math.min((now - lastTime) / 1000, 0.1);
-  lastTime = now;
-  processTime(dt);
-  updateParticles(dt);
-  drawParticles();
-  requestAnimationFrame(gameLoop);
-}
-
-function backgroundTick() {
-  if (document.hidden) {
-    const now = performance.now();
-    const dt = Math.min((now - lastTime) / 1000, 2);
-    lastTime = now;
-    processTime(dt);
-    updateUI();
-  }
-}
-
-function handleVisibilityChange() {
-  if (!document.hidden) { lastTime = performance.now(); updateUI(); if (shopOpen) renderSidebar(); }
-}
-document.addEventListener('visibilitychange', handleVisibilityChange);
-
-// ============================================
-// UPGRADE SYSTEM
-// ============================================
-function buyUpgrade(upgradeKey) {
-  const upgrade = upgrades[upgradeKey];
-  if (upgrade.currentLevel >= upgrade.levels.length) return;
-  const nextLevel = upgrade.levels[upgrade.currentLevel];
-  if (completedBars < nextLevel.cost) return;
-  completedBars -= nextLevel.cost;
-  upgrade.currentLevel++;
-  upgrade.apply(nextLevel.value);
-  updateUI(); renderSidebar(); saveGame();
-}
-
-function unlockSpecialBar(barType) {
-  const unlock = specialBarUnlocks[barType];
-  if (unlock.unlocked || completedBars < unlock.cost) return;
-  completedBars -= unlock.cost;
-  unlock.unlocked = true;
-  updateUI(); renderSidebar(); saveGame();
-}
-
-function activateChaosPower(powerKey) {
-  const power = chaosPowers[powerKey];
-  if (chaosShards < power.cost) return;
-  chaosShards -= power.cost;
-  power.activate();
-  updateUI(); renderSidebar(); saveGame();
-}
-
-// ============================================
-// UI RENDERING
-// ============================================
-function formatNumber(num) {
-  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-  return Math.floor(num).toString();
-}
-
-function calculateBarsPerSecond() {
-  let total = 0;
-  for (const bar of activeBars) {
-    if (bar.completed) continue;
-    let value = barsPerCompletion * (1 + bar.depth * 0.5);
-    if (megaBoostTimer > 0) value *= 3;
-    const remaining = (1 - bar.progress) / bar.fillRate;
-    if (remaining > 0) total += value / remaining;
-  }
-  return total;
-}
-
-function updateUI() {
-  document.getElementById('completed-bars').textContent = formatNumber(completedBars);
-  document.getElementById('manual-slots').textContent = manualBarsActive + '/' + maxManualSlots;
-  document.getElementById('active-bars').textContent = activeBars.filter(b => !b.completed).length;
-  document.getElementById('chaos-shards').textContent = formatNumber(chaosShards);
-  document.getElementById('cooking-value').textContent = calculateBarsPerSecond().toFixed(1) + '/s';
-}
-
-function renderSidebar() {
-  const upgradesSection = document.getElementById('upgrades-section');
-  upgradesSection.innerHTML = '<div class="section-title">Upgrades</div>';
-  for (const [key, upgrade] of Object.entries(upgrades)) {
-    const cl = upgrade.currentLevel;
-    const isMaxed = cl >= upgrade.levels.length;
-    const nl = isMaxed ? null : upgrade.levels[cl];
-    const canAfford = nl && completedBars >= nl.cost;
-    const item = document.createElement('div');
-    item.className = 'upgrade-item' + (isMaxed ? ' maxed' : (!canAfford ? ' disabled' : ''));
-    const cv = upgrade.getCurrentValue();
-    let valuesHtml = isMaxed
-      ? `<span class="current-value">${upgrade.getDisplay(cv)}</span> <span style="color:#4ecca3">MAX</span>`
-      : `<span class="current-value">${upgrade.getDisplay(cv)}</span> <span class="arrow">→</span> <span class="next-value">${upgrade.getDisplay(nl.value)}</span>`;
-    item.innerHTML = `<div class="item-header"><span class="item-name">${upgrade.name}</span><span class="item-level">${cl}/${upgrade.levels.length}</span></div><div class="item-values">${valuesHtml}</div>${!isMaxed ? `<div class="item-cost ${canAfford ? 'affordable' : ''}">Cost: ${formatNumber(nl.cost)} bars</div>` : ''}`;
-    if (!isMaxed && canAfford) item.onclick = () => buyUpgrade(key);
-    upgradesSection.appendChild(item);
-  }
-
-  const unlocksSection = document.getElementById('unlocks-section');
-  unlocksSection.innerHTML = '<div class="section-title">Special Bars</div>';
-  for (const [key, unlock] of Object.entries(specialBarUnlocks)) {
-    const canAfford = completedBars >= unlock.cost;
-    const item = document.createElement('div');
-    item.className = 'unlock-item' + (unlock.unlocked ? ' unlocked' : (!canAfford ? ' disabled' : ''));
-    item.innerHTML = `<div class="item-header"><span class="item-name">${unlock.name}</span>${unlock.unlocked ? '<span class="unlock-badge">UNLOCKED</span>' : ''}</div><div class="item-description">${unlock.description}</div>${!unlock.unlocked ? `<div class="item-cost ${canAfford ? 'affordable' : ''}">Cost: ${formatNumber(unlock.cost)} bars</div>` : ''}`;
-    if (!unlock.unlocked && canAfford) item.onclick = () => unlockSpecialBar(key);
-    unlocksSection.appendChild(item);
-  }
-
-  const powersSection = document.getElementById('powers-section');
-  powersSection.innerHTML = '<div class="section-title">Chaos Powers</div>';
-  for (const [key, power] of Object.entries(chaosPowers)) {
-    const canAfford = chaosShards >= power.cost;
-    const item = document.createElement('div');
-    item.className = 'power-item' + (!canAfford ? ' disabled' : '');
-    let timerHtml = '';
-    if (key === 'megaBoost' && megaBoostTimer > 0) timerHtml = `<div class="power-timer">Active: ${Math.ceil(megaBoostTimer)}s</div>`;
-    else if (key === 'luckyStorm' && luckyStormCount > 0) timerHtml = `<div class="power-timer">Remaining: ${luckyStormCount}</div>`;
-    item.innerHTML = `<div class="item-header"><span class="item-name">${power.name}</span></div><div class="item-description">${power.description}</div><div class="item-cost shards ${canAfford ? 'affordable' : ''}">${power.cost} shards</div>${timerHtml}`;
-    if (canAfford) item.onclick = () => activateChaosPower(key);
-    powersSection.appendChild(item);
-  }
-}
-
-// ============================================
-// MODAL CONTROL
-// ============================================
-function openShop() { shopOpen = true; document.getElementById('modal-overlay').classList.add('open'); renderSidebar(); }
-function closeShop() { shopOpen = false; document.getElementById('modal-overlay').classList.remove('open'); }
-
-// ============================================
-// INPUT HANDLING
-// ============================================
-function handleClick(e) {
-  const playArea = document.getElementById('play-area');
-  const rect = playArea.getBoundingClientRect();
-  spawnClickRipple(e.clientX - rect.left, e.clientY - rect.top);
-  createBar(e.clientX - rect.left - 70, e.clientY - rect.top - 13, 0, true);
-}
-
-// ============================================
-// INITIALIZATION
-// ============================================
-function init() {
-  const loaded = loadGame();
-  if (loaded) console.log('Game loaded from save');
-
-  fxCanvas = document.getElementById('fx-canvas');
-  fxCtx = fxCanvas.getContext('2d');
-  resizeFxCanvas();
-  window.addEventListener('resize', resizeFxCanvas);
-
-  const playArea = document.getElementById('play-area');
-  playArea.addEventListener('click', handleClick);
-  playArea.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    const touch = e.touches[0];
-    handleClick({ clientX: touch.clientX, clientY: touch.clientY });
-  });
-
-  document.getElementById('shop-button').addEventListener('click', openShop);
-  document.getElementById('close-modal').addEventListener('click', closeShop);
-  document.getElementById('modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'modal-overlay') closeShop(); });
-
-  updateMegaOverlay();
-  updateUI();
-  renderSidebar();
-  gameLoop();
-
-  setInterval(() => { if (shopOpen) renderSidebar(); }, 1000);
-  setInterval(backgroundTick, 1000);
-  setInterval(saveGame, 5000);
-  window.addEventListener('beforeunload', saveGame);
-  window.clearSave = clearSave;
-  console.log('Tip: Call clearSave() in console to reset progress');
-}
-
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded',init);
 </script>
 </body>
 </html>
