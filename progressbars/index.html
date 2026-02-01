@@ -41,31 +41,15 @@
       font-size: 12px;
     }
     @media (min-width: 600px) {
-      #top-bar {
-        padding: 12px 20px;
-      }
-      .stat {
-        gap: 8px;
-        font-size: 14px;
-      }
+      #top-bar { padding: 12px 20px; }
+      .stat { gap: 8px; font-size: 14px; }
     }
-    .stat-label {
-      color: #666;
-    }
-    .stat-value {
-      font-weight: bold;
-      color: #4ecca3;
-    }
-    .stat-value.slots {
-      color: #7eb8da;
-    }
-    .stat-value.shards {
-      color: #e94560;
-    }
-    .stat-value.cooking {
-      color: #ff9800;
-      font-style: italic;
-    }
+    .stat-label { color: #666; }
+    .stat-value { font-weight: bold; color: #4ecca3; }
+    .stat-value.slots { color: #7eb8da; }
+    .stat-value.shards { color: #e94560; }
+    .stat-value.cooking { color: #ff9800; font-style: italic; }
+
     #combo-display {
       position: fixed;
       top: 70px;
@@ -80,17 +64,14 @@
       z-index: 100;
       pointer-events: none;
     }
-    #combo-display.active {
-      opacity: 1;
-    }
-    #combo-display.pulse {
-      animation: combo-pulse 0.15s ease-out;
-    }
+    #combo-display.active { opacity: 1; }
+    #combo-display.pulse { animation: combo-pulse 0.15s ease-out; }
     @keyframes combo-pulse {
       0% { transform: translateX(-50%) scale(1); }
       50% { transform: translateX(-50%) scale(1.3); }
       100% { transform: translateX(-50%) scale(1); }
     }
+
     #main-content {
       display: flex;
       flex: 1;
@@ -104,6 +85,104 @@
       overflow: hidden;
       cursor: crosshair;
     }
+
+    /* Particle canvas overlay */
+    #fx-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 60;
+    }
+
+    /* Screen shake */
+    #play-area.shake-light {
+      animation: shake-light 0.15s ease-out;
+    }
+    #play-area.shake-heavy {
+      animation: shake-heavy 0.25s ease-out;
+    }
+    @keyframes shake-light {
+      0% { transform: translate(0,0); }
+      25% { transform: translate(-2px, 1px); }
+      50% { transform: translate(2px, -1px); }
+      75% { transform: translate(-1px, 2px); }
+      100% { transform: translate(0,0); }
+    }
+    @keyframes shake-heavy {
+      0% { transform: translate(0,0); }
+      15% { transform: translate(-4px, 3px); }
+      30% { transform: translate(4px, -2px); }
+      45% { transform: translate(-3px, -3px); }
+      60% { transform: translate(3px, 4px); }
+      75% { transform: translate(-2px, -1px); }
+      100% { transform: translate(0,0); }
+    }
+
+    /* Mega boost vignette overlay */
+    #mega-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 55;
+      opacity: 0;
+      transition: opacity 0.4s;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(255, 150, 0, 0.12) 100%);
+    }
+    #mega-overlay.active {
+      opacity: 1;
+      animation: mega-pulse 2s ease-in-out infinite;
+    }
+    @keyframes mega-pulse {
+      0%, 100% { background: radial-gradient(ellipse at center, transparent 40%, rgba(255, 150, 0, 0.08) 100%); }
+      50% { background: radial-gradient(ellipse at center, transparent 30%, rgba(255, 150, 0, 0.18) 100%); }
+    }
+
+    /* Crit screen flash */
+    #crit-flash-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 56;
+      opacity: 0;
+      background: radial-gradient(ellipse at center, rgba(255, 82, 82, 0.25) 0%, transparent 70%);
+    }
+    #crit-flash-overlay.flash {
+      animation: crit-screen-flash 0.3s ease-out forwards;
+    }
+    @keyframes crit-screen-flash {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Click ripple */
+    .click-ripple {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      border: 2px solid rgba(126, 184, 218, 0.6);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: ripple-expand 0.5s ease-out forwards;
+      z-index: 5;
+    }
+    @keyframes ripple-expand {
+      0% { transform: scale(0.3); opacity: 1; }
+      100% { transform: scale(3); opacity: 0; }
+    }
+
+    /* Spawn flash on new bars */
+    .progress-bar.spawn-flash {
+      animation: bar-spawn 0.3s ease-out;
+    }
+    @keyframes bar-spawn {
+      0% { transform: scale(0.5); opacity: 0; filter: brightness(2); }
+      60% { transform: scale(1.08); opacity: 1; filter: brightness(1.5); }
+      100% { transform: scale(1); opacity: 1; filter: brightness(1); }
+    }
+
     #shop-button {
       background: linear-gradient(180deg, #4ecca3 0%, #3db892 100%);
       border: none;
@@ -119,15 +198,11 @@
       transform: scale(1.05);
       box-shadow: 0 0 15px rgba(78, 204, 163, 0.5);
     }
-    #shop-button:active {
-      transform: scale(0.98);
-    }
+    #shop-button:active { transform: scale(0.98); }
+
     #modal-overlay {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0, 0, 0, 0.8);
       z-index: 1000;
       display: none;
@@ -135,9 +210,7 @@
       align-items: center;
       padding: 20px;
     }
-    #modal-overlay.open {
-      display: flex;
-    }
+    #modal-overlay.open { display: flex; }
     #shop-modal {
       background: linear-gradient(180deg, #1a1a2e 0%, #12121f 100%);
       border: 2px solid #2a2a4a;
@@ -159,36 +232,21 @@
       background: linear-gradient(180deg, #1a1a2e 0%, #1a1a2e 100%);
       z-index: 10;
     }
-    #modal-header h2 {
-      margin: 0;
-      font-size: 18px;
-      color: #4ecca3;
-    }
+    #modal-header h2 { margin: 0; font-size: 18px; color: #4ecca3; }
     #close-modal {
       background: rgba(233, 69, 96, 0.2);
       border: 1px solid #e94560;
       color: #e94560;
-      width: 32px;
-      height: 32px;
+      width: 32px; height: 32px;
       border-radius: 6px;
       font-size: 18px;
       cursor: pointer;
       transition: background 0.15s;
     }
-    #close-modal:hover {
-      background: rgba(233, 69, 96, 0.4);
-    }
-    .modal-section {
-      border-bottom: 1px solid #2a2a4a;
-      padding: 12px 16px;
-    }
-    .section-title {
-      font-size: 11px;
-      text-transform: uppercase;
-      color: #666;
-      margin-bottom: 10px;
-      letter-spacing: 1px;
-    }
+    #close-modal:hover { background: rgba(233, 69, 96, 0.4); }
+    .modal-section { border-bottom: 1px solid #2a2a4a; padding: 12px 16px; }
+    .section-title { font-size: 11px; text-transform: uppercase; color: #666; margin-bottom: 10px; letter-spacing: 1px; }
+
     .upgrade-item, .unlock-item, .power-item {
       background: rgba(255,255,255,0.03);
       border-radius: 6px;
@@ -204,74 +262,22 @@
       border-color: #4ecca3;
       background: rgba(78, 204, 163, 0.1);
     }
-    .upgrade-item.disabled, .unlock-item.disabled, .power-item.disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-    .upgrade-item.maxed {
-      opacity: 0.6;
-      cursor: default;
-      border-color: #4ecca3;
-    }
-    .unlock-item.unlocked {
-      border-color: #4ecca3;
-      cursor: default;
-    }
-    .item-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 4px;
-    }
-    .item-name {
-      font-weight: bold;
-      font-size: 13px;
-    }
-    .item-level {
-      font-size: 11px;
-      color: #666;
-    }
-    .item-values {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      margin-bottom: 6px;
-    }
-    .current-value {
-      color: #4ecca3;
-    }
-    .arrow {
-      color: #444;
-    }
-    .next-value {
-      color: #7eb8da;
-    }
-    .item-cost {
-      font-size: 11px;
-      color: #e94560;
-    }
-    .item-cost.affordable {
-      color: #4ecca3;
-    }
-    .unlock-badge {
-      background: #4ecca3;
-      color: #0a0a12;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 10px;
-      font-weight: bold;
-    }
-    .item-description {
-      font-size: 11px;
-      color: #666;
-      margin-top: 4px;
-    }
-    .power-timer {
-      font-size: 11px;
-      color: #ff9800;
-      margin-top: 4px;
-    }
+    .upgrade-item.disabled, .unlock-item.disabled, .power-item.disabled { opacity: 0.4; cursor: not-allowed; }
+    .upgrade-item.maxed { opacity: 0.6; cursor: default; border-color: #4ecca3; }
+    .unlock-item.unlocked { border-color: #4ecca3; cursor: default; }
+    .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .item-name { font-weight: bold; font-size: 13px; }
+    .item-level { font-size: 11px; color: #666; }
+    .item-values { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 6px; }
+    .current-value { color: #4ecca3; }
+    .arrow { color: #444; }
+    .next-value { color: #7eb8da; }
+    .item-cost { font-size: 11px; color: #e94560; }
+    .item-cost.affordable { color: #4ecca3; }
+    .unlock-badge { background: #4ecca3; color: #0a0a12; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; }
+    .item-description { font-size: 11px; color: #666; margin-top: 4px; }
+    .power-timer { font-size: 11px; color: #ff9800; margin-top: 4px; }
+
     /* Progress bar styles */
     .progress-bar {
       position: absolute;
@@ -284,63 +290,74 @@
     }
     .progress-bar-inner {
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 0; left: 0; right: 0; bottom: 0;
       border-radius: 2px;
       overflow: hidden;
       background: #1a1a2e;
     }
-    .progress-bar.manual {
-      border-color: rgba(126, 184, 218, 0.5);
-    }
-    .progress-bar.chain {
-      border-color: rgba(78, 204, 163, 0.5);
-    }
-    .progress-bar.depth-2 {
-      border-color: rgba(255, 193, 7, 0.6);
-    }
-    .progress-bar.depth-3 {
-      border-color: rgba(255, 152, 0, 0.7);
-    }
-    .progress-bar.depth-4 {
-      border-color: rgba(255, 87, 34, 0.8);
-    }
-    .progress-bar.depth-5 {
-      border-color: rgba(233, 30, 99, 0.9);
-    }
+    .progress-bar.manual { border-color: rgba(126, 184, 218, 0.5); }
+    .progress-bar.chain { border-color: rgba(78, 204, 163, 0.5); }
+    .progress-bar.depth-2 { border-color: rgba(255, 193, 7, 0.6); }
+    .progress-bar.depth-3 { border-color: rgba(255, 152, 0, 0.7); }
+    .progress-bar.depth-4 { border-color: rgba(255, 87, 34, 0.8); }
+    .progress-bar.depth-5 { border-color: rgba(233, 30, 99, 0.9); }
     .progress-bar.crit-flash {
       border-color: #ff5252 !important;
       box-shadow: 0 0 15px rgba(255, 82, 82, 0.8);
     }
+    .progress-bar.boost-bar {
+      border-color: rgba(255, 215, 0, 0.8) !important;
+      box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+      animation: boost-glow 1s ease-in-out infinite alternate;
+    }
+    @keyframes boost-glow {
+      from { box-shadow: 0 0 8px rgba(255, 215, 0, 0.3); }
+      to   { box-shadow: 0 0 18px rgba(255, 215, 0, 0.7); }
+    }
+    .bar-fill.boost-bar {
+      background: linear-gradient(90deg, #d4a017, #ffd700, #d4a017) !important;
+      background-size: 200% 100%;
+      animation: boost-shimmer 1.5s linear infinite;
+    }
+    @keyframes boost-shimmer {
+      0%   { background-position: 0% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .progress-bar.cascade-bar {
+      border-color: transparent !important;
+      box-shadow: 0 0 14px rgba(180, 100, 255, 0.5);
+      animation: cascade-border 2s linear infinite;
+      border-image: linear-gradient(90deg, #ff6b6b, #ffd700, #4ecca3, #7eb8da, #c77dff) 1;
+    }
+    @keyframes cascade-border {
+      0%   { filter: hue-rotate(0deg); }
+      100% { filter: hue-rotate(360deg); }
+    }
+    .bar-fill.cascade-bar {
+      background: linear-gradient(90deg, #ff6b6b, #ffd700, #4ecca3, #7eb8da, #c77dff) !important;
+      background-size: 300% 100%;
+      animation: cascade-fill 2s linear infinite;
+    }
+    @keyframes cascade-fill {
+      0%   { background-position: 0% 0; }
+      100% { background-position: 300% 0; }
+    }
+
     .bar-fill {
       height: 100%;
       transition: width 0.05s linear;
       position: relative;
     }
-    .bar-fill.manual {
-      background: linear-gradient(90deg, #5a8fba, #7eb8da);
-    }
-    .bar-fill.chain {
-      background: linear-gradient(90deg, #3d9970, #4ecca3);
-    }
-    .bar-fill.depth-2 {
-      background: linear-gradient(90deg, #f39c12, #f1c40f);
-    }
-    .bar-fill.depth-3 {
-      background: linear-gradient(90deg, #e67e22, #ff9800);
-    }
-    .bar-fill.depth-4 {
-      background: linear-gradient(90deg, #e74c3c, #ff5722);
-    }
-    .bar-fill.depth-5 {
-      background: linear-gradient(90deg, #c0392b, #e91e63);
-    }
+    .bar-fill.manual { background: linear-gradient(90deg, #5a8fba, #7eb8da); }
+    .bar-fill.chain { background: linear-gradient(90deg, #3d9970, #4ecca3); }
+    .bar-fill.depth-2 { background: linear-gradient(90deg, #f39c12, #f1c40f); }
+    .bar-fill.depth-3 { background: linear-gradient(90deg, #e67e22, #ff9800); }
+    .bar-fill.depth-4 { background: linear-gradient(90deg, #e74c3c, #ff5722); }
+    .bar-fill.depth-5 { background: linear-gradient(90deg, #c0392b, #e91e63); }
+
     .depth-indicator {
       position: absolute;
-      top: -18px;
-      left: 4px;
+      top: -18px; left: 4px;
       font-size: 10px;
       color: rgba(255,255,255,0.7);
       font-weight: bold;
@@ -353,22 +370,11 @@
       text-shadow: 0 2px 4px rgba(0,0,0,0.8);
       z-index: 50;
     }
-    .floating-text.normal {
-      color: #fff;
-      font-size: 16px;
-    }
-    .floating-text.combo {
-      color: #ff6b6b;
-      font-size: 20px;
-    }
-    .floating-text.crit {
-      color: #ff5252;
-      font-size: 24px;
-    }
-    .floating-text.depth {
-      color: #ffd700;
-      font-size: 18px;
-    }
+    .floating-text.normal { color: #fff; font-size: 16px; }
+    .floating-text.combo { color: #ff6b6b; font-size: 20px; }
+    .floating-text.crit { color: #ff5252; font-size: 24px; }
+    .floating-text.depth { color: #ffd700; font-size: 18px; }
+    .floating-text.shard-gain { color: #e94560; font-size: 14px; }
     @keyframes float-up {
       0% { opacity: 1; transform: translateY(0) scale(1); }
       50% { opacity: 1; transform: translateY(-20px) scale(1.1); }
@@ -376,8 +382,7 @@
     }
     .slot-full-indicator {
       position: fixed;
-      bottom: 20px;
-      left: 50%;
+      bottom: 20px; left: 50%;
       transform: translateX(-50%);
       background: rgba(233, 69, 96, 0.9);
       padding: 8px 16px;
@@ -387,9 +392,7 @@
       transition: opacity 0.3s;
       pointer-events: none;
     }
-    .slot-full-indicator.show {
-      opacity: 1;
-    }
+    .slot-full-indicator.show { opacity: 1; }
   </style>
 </head>
 <body>
@@ -419,7 +422,11 @@
     </div>
     <div id="combo-display">x1</div>
     <div id="main-content">
-      <div id="play-area"></div>
+      <div id="play-area">
+        <canvas id="fx-canvas"></canvas>
+        <div id="mega-overlay"></div>
+        <div id="crit-flash-overlay"></div>
+      </div>
     </div>
   </div>
   <div class="slot-full-indicator" id="slot-indicator">Manual slots full! Wait for chains...</div>
@@ -451,29 +458,220 @@ let chaosShards = 0;
 const MAX_ACTIVE_BARS = 150;
 const QUEUE_TO_SHARDS_RATE = 5;
 
-// Core stats
-let baseFillTime = 10;        // 10 seconds base
-let fillSpeedMultiplier = 1;  // multiplier for speed upgrades
-let chainChance = 0.10;       // 10% starting chain chance!
+let baseFillTime = 10;
+let fillSpeedMultiplier = 1;
+let chainChance = 0.10;
 let maxChainDepth = 1;
 let barsPerCompletion = 1;
 let maxManualSlots = 3;
 let critChance = 0;
 let critMultiplier = 2;
 
-// Tracking
 let manualBarsActive = 0;
 let activeBars = [];
 
-// Combo system
 let comboCount = 0;
 let lastCompletionTime = 0;
-const COMBO_WINDOW = 1500; // 1.5 seconds to chain combos
+const COMBO_WINDOW = 1500;
 let comboResetTimeout = null;
 
-// Chaos power timers
 let megaBoostTimer = 0;
 let luckyStormCount = 0;
+let shopOpen = false;
+
+// ============================================
+// CANVAS PARTICLE SYSTEM
+// ============================================
+const particles = [];
+const lightnings = [];
+let fxCanvas, fxCtx;
+
+const PARTICLE_COLORS = {
+  manual:    ['#7eb8da', '#5a8fba', '#a0d0f0'],
+  chain:     ['#4ecca3', '#3d9970', '#80ffcc'],
+  'depth-2': ['#f1c40f', '#f39c12', '#ffe066'],
+  'depth-3': ['#ff9800', '#e67e22', '#ffcc80'],
+  'depth-4': ['#ff5722', '#e74c3c', '#ff8a65'],
+  'depth-5': ['#e91e63', '#c0392b', '#ff6090'],
+  boost:     ['#ffd700', '#ffec80', '#d4a017'],
+  cascade:   ['#ff6b6b', '#ffd700', '#4ecca3', '#7eb8da', '#c77dff'],
+  crit:      ['#ff5252', '#ff1744', '#ff8a80', '#ffffff'],
+  shard:     ['#e94560', '#ff6b8a', '#c0223b'],
+};
+
+function spawnExplosion(cx, cy, type, count) {
+  const colors = PARTICLE_COLORS[type] || PARTICLE_COLORS.manual;
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 / count) * i + (Math.random() - 0.5) * 0.5;
+    const speed = 60 + Math.random() * 120;
+    particles.push({
+      x: cx, y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 0.5 + Math.random() * 0.4,
+      maxLife: 0.5 + Math.random() * 0.4,
+      size: 2 + Math.random() * 3,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      gravity: 40 + Math.random() * 30,
+      friction: 0.96,
+    });
+  }
+}
+
+function spawnSparks(cx, cy, type, count) {
+  const colors = PARTICLE_COLORS[type] || PARTICLE_COLORS.manual;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 30 + Math.random() * 60;
+    particles.push({
+      x: cx, y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 20,
+      life: 0.3 + Math.random() * 0.3,
+      maxLife: 0.3 + Math.random() * 0.3,
+      size: 1 + Math.random() * 1.5,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      gravity: 80,
+      friction: 0.94,
+    });
+  }
+}
+
+function spawnLightning(x1, y1, x2, y2, color) {
+  lightnings.push({
+    x1, y1, x2, y2,
+    color: color || '#4ecca3',
+    life: 0.3,
+    maxLife: 0.3,
+    segments: generateLightningSegments(x1, y1, x2, y2),
+  });
+}
+
+function generateLightningSegments(x1, y1, x2, y2) {
+  const segments = [{x: x1, y: y1}];
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const steps = 5 + Math.floor(Math.random() * 4);
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    const jitter = 12 + Math.random() * 8;
+    segments.push({
+      x: x1 + dx * t + (Math.random() - 0.5) * jitter * 2,
+      y: y1 + dy * t + (Math.random() - 0.5) * jitter * 2,
+    });
+  }
+  segments.push({x: x2, y: y2});
+  return segments;
+}
+
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= dt;
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
+    p.vy += p.gravity * dt;
+    p.vx *= p.friction;
+    p.vy *= p.friction;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+  }
+  for (let i = lightnings.length - 1; i >= 0; i--) {
+    lightnings[i].life -= dt;
+    if (lightnings[i].life <= 0) lightnings.splice(i, 1);
+  }
+}
+
+function drawParticles() {
+  if (!fxCtx) return;
+  const w = fxCanvas.width;
+  const h = fxCanvas.height;
+  fxCtx.clearRect(0, 0, w, h);
+
+  // Lightning bolts
+  for (const l of lightnings) {
+    const alpha = l.life / l.maxLife;
+    fxCtx.strokeStyle = l.color;
+    fxCtx.globalAlpha = alpha * 0.9;
+    fxCtx.lineWidth = 2;
+    fxCtx.shadowColor = l.color;
+    fxCtx.shadowBlur = 8;
+    fxCtx.beginPath();
+    fxCtx.moveTo(l.segments[0].x, l.segments[0].y);
+    for (let i = 1; i < l.segments.length; i++) {
+      fxCtx.lineTo(l.segments[i].x, l.segments[i].y);
+    }
+    fxCtx.stroke();
+    // Bright core
+    fxCtx.globalAlpha = alpha * 0.5;
+    fxCtx.lineWidth = 1;
+    fxCtx.strokeStyle = '#fff';
+    fxCtx.beginPath();
+    fxCtx.moveTo(l.segments[0].x, l.segments[0].y);
+    for (let i = 1; i < l.segments.length; i++) {
+      fxCtx.lineTo(l.segments[i].x, l.segments[i].y);
+    }
+    fxCtx.stroke();
+  }
+
+  fxCtx.shadowBlur = 0;
+
+  // Particles
+  for (const p of particles) {
+    const alpha = p.life / p.maxLife;
+    fxCtx.globalAlpha = alpha;
+    fxCtx.fillStyle = p.color;
+    fxCtx.beginPath();
+    fxCtx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+    fxCtx.fill();
+  }
+
+  fxCtx.globalAlpha = 1;
+}
+
+function resizeFxCanvas() {
+  if (!fxCanvas) return;
+  const rect = fxCanvas.parentElement.getBoundingClientRect();
+  fxCanvas.width = rect.width;
+  fxCanvas.height = rect.height;
+}
+
+// ============================================
+// SCREEN EFFECTS
+// ============================================
+function screenShake(intensity) {
+  const playArea = document.getElementById('play-area');
+  const cls = intensity === 'heavy' ? 'shake-heavy' : 'shake-light';
+  playArea.classList.remove('shake-light', 'shake-heavy');
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => { playArea.classList.add(cls); });
+  });
+  setTimeout(() => playArea.classList.remove(cls), intensity === 'heavy' ? 250 : 150);
+}
+
+function critScreenFlash() {
+  const overlay = document.getElementById('crit-flash-overlay');
+  overlay.classList.remove('flash');
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => { overlay.classList.add('flash'); });
+  });
+  setTimeout(() => overlay.classList.remove('flash'), 300);
+}
+
+function updateMegaOverlay() {
+  const overlay = document.getElementById('mega-overlay');
+  if (megaBoostTimer > 0) overlay.classList.add('active');
+  else overlay.classList.remove('active');
+}
+
+function spawnClickRipple(x, y) {
+  const playArea = document.getElementById('play-area');
+  const ripple = document.createElement('div');
+  ripple.className = 'click-ripple';
+  ripple.style.left = (x - 15) + 'px';
+  ripple.style.top = (y - 15) + 'px';
+  playArea.appendChild(ripple);
+  setTimeout(() => ripple.remove(), 500);
+}
 
 // ============================================
 // LOCAL STORAGE
@@ -481,150 +679,68 @@ let luckyStormCount = 0;
 const SAVE_KEY = 'progressBarClicker_v1';
 
 function saveGame() {
-  const saveData = {
-    completedBars,
-    chaosShards,
-    upgrades: {},
-    unlocks: {}
-  };
-
-  for (const [key, upgrade] of Object.entries(upgrades)) {
-    saveData.upgrades[key] = upgrade.currentLevel;
-  }
-
-  for (const [key, unlock] of Object.entries(specialBarUnlocks)) {
-    saveData.unlocks[key] = unlock.unlocked;
-  }
-
+  const saveData = { completedBars, chaosShards, upgrades: {}, unlocks: {} };
+  for (const [key, upgrade] of Object.entries(upgrades)) saveData.upgrades[key] = upgrade.currentLevel;
+  for (const [key, unlock] of Object.entries(specialBarUnlocks)) saveData.unlocks[key] = unlock.unlocked;
   localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
 }
 
 function loadGame() {
   const saved = localStorage.getItem(SAVE_KEY);
   if (!saved) return false;
-
   try {
     const data = JSON.parse(saved);
-
     completedBars = data.completedBars || 0;
     chaosShards = data.chaosShards || 0;
-
-    // Restore upgrades
     for (let [key, level] of Object.entries(data.upgrades || {})) {
-      // Backwards compat: old save key
       if (key === 'barsPerCompletion') key = 'baseValue';
-
       if (upgrades[key]) {
         upgrades[key].currentLevel = level;
-        // Apply all levels up to current
-        if (level > 0 && upgrades[key].levels[level - 1]) {
-          upgrades[key].apply(upgrades[key].levels[level - 1].value);
-        }
+        if (level > 0 && upgrades[key].levels[level - 1]) upgrades[key].apply(upgrades[key].levels[level - 1].value);
       }
     }
-
-    // Restore unlocks
     for (const [key, unlocked] of Object.entries(data.unlocks || {})) {
-      if (specialBarUnlocks[key]) {
-        specialBarUnlocks[key].unlocked = unlocked;
-      }
+      if (specialBarUnlocks[key]) specialBarUnlocks[key].unlocked = unlocked;
     }
-
     return true;
-  } catch (e) {
-    console.error('Failed to load save:', e);
-    return false;
-  }
+  } catch (e) { console.error('Failed to load save:', e); return false; }
 }
 
-function clearSave() {
-  localStorage.removeItem(SAVE_KEY);
-  location.reload();
-}
+function clearSave() { localStorage.removeItem(SAVE_KEY); location.reload(); }
 
 // ============================================
-// UPGRADES DEFINITION
+// UPGRADES
 // ============================================
 const upgrades = {
   baseValue: {
-    name: 'Base Value',
-    currentLevel: 0,
-    levels: [
-      { cost: 10, value: 2 },
-      { cost: 35, value: 3 },
-      { cost: 100, value: 5 },
-      { cost: 300, value: 8 },
-      { cost: 900, value: 12 },
-    ],
-    getDisplay: (val) => val + ' bars',
-    getCurrentValue: () => barsPerCompletion,
-    apply: (val) => { barsPerCompletion = val; }
+    name: 'Base Value', currentLevel: 0,
+    levels: [{ cost: 10, value: 2 },{ cost: 35, value: 3 },{ cost: 100, value: 5 },{ cost: 300, value: 8 },{ cost: 900, value: 12 }],
+    getDisplay: (val) => val + ' bars', getCurrentValue: () => barsPerCompletion, apply: (val) => { barsPerCompletion = val; }
   },
   chainChance: {
-    name: 'Chain Chance',
-    currentLevel: 0,
-    levels: [
-      { cost: 15, value: 0.20 },   // 20%
-      { cost: 40, value: 0.35 },   // 35%
-      { cost: 100, value: 0.50 },  // 50%
-      { cost: 250, value: 0.70 },  // 70%
-      { cost: 600, value: 0.90 },  // 90%
-      { cost: 1500, value: 1.10 }, // 110%
-    ],
-    getDisplay: (val) => Math.floor(val * 100) + '%',
-    getCurrentValue: () => chainChance,
-    apply: (val) => { chainChance = val; }
+    name: 'Chain Chance', currentLevel: 0,
+    levels: [{ cost: 15, value: 0.20 },{ cost: 40, value: 0.35 },{ cost: 100, value: 0.50 },{ cost: 250, value: 0.70 },{ cost: 600, value: 0.90 },{ cost: 1500, value: 1.10 }],
+    getDisplay: (val) => Math.floor(val * 100) + '%', getCurrentValue: () => chainChance, apply: (val) => { chainChance = val; }
   },
   chainDepth: {
-    name: 'Chain Depth',
-    currentLevel: 0,
-    levels: [
-      { cost: 50, value: 2 },
-      { cost: 200, value: 3 },
-      { cost: 800, value: 4 },
-      { cost: 3000, value: 5 },
-    ],
-    getDisplay: (val) => 'Depth ' + val,
-    getCurrentValue: () => maxChainDepth,
-    apply: (val) => { maxChainDepth = val; }
+    name: 'Chain Depth', currentLevel: 0,
+    levels: [{ cost: 50, value: 2 },{ cost: 200, value: 3 },{ cost: 800, value: 4 },{ cost: 3000, value: 5 }],
+    getDisplay: (val) => 'Depth ' + val, getCurrentValue: () => maxChainDepth, apply: (val) => { maxChainDepth = val; }
   },
   manualSlots: {
-    name: 'Manual Slots',
-    currentLevel: 0,
-    levels: [
-      { cost: 25, value: 4 },
-      { cost: 80, value: 5 },
-      { cost: 200, value: 7 },
-      { cost: 500, value: 10 },
-    ],
-    getDisplay: (val) => val + ' slots',
-    getCurrentValue: () => maxManualSlots,
-    apply: (val) => { maxManualSlots = val; }
+    name: 'Manual Slots', currentLevel: 0,
+    levels: [{ cost: 25, value: 4 },{ cost: 80, value: 5 },{ cost: 200, value: 7 },{ cost: 500, value: 10 }],
+    getDisplay: (val) => val + ' slots', getCurrentValue: () => maxManualSlots, apply: (val) => { maxManualSlots = val; }
   },
   fillSpeed: {
-    name: 'Fill Speed',
-    currentLevel: 0,
-    levels: [
-      { cost: 60, value: 1.3 },   // 7.7s
-      { cost: 200, value: 1.7 },  // 5.9s
-      { cost: 600, value: 2.2 },  // 4.5s
-      { cost: 2000, value: 3.0 }, // 3.3s
-    ],
-    getDisplay: (val) => (baseFillTime / val).toFixed(1) + 's',
-    getCurrentValue: () => fillSpeedMultiplier,
-    apply: (val) => { fillSpeedMultiplier = val; }
+    name: 'Fill Speed', currentLevel: 0,
+    levels: [{ cost: 60, value: 1.3 },{ cost: 200, value: 1.7 },{ cost: 600, value: 2.2 },{ cost: 2000, value: 3.0 }],
+    getDisplay: (val) => (baseFillTime / val).toFixed(1) + 's', getCurrentValue: () => fillSpeedMultiplier, apply: (val) => { fillSpeedMultiplier = val; }
   },
   critChance: {
-    name: 'Crit Chance',
-    currentLevel: 0,
-    levels: [
-      { cost: 100, value: 0.08 },
-      { cost: 400, value: 0.18 },
-      { cost: 1500, value: 0.30 },
-    ],
-    getDisplay: (val) => Math.floor(val * 100) + '%',
-    getCurrentValue: () => critChance,
-    apply: (val) => { critChance = val; }
+    name: 'Crit Chance', currentLevel: 0,
+    levels: [{ cost: 100, value: 0.08 },{ cost: 400, value: 0.18 },{ cost: 1500, value: 0.30 }],
+    getDisplay: (val) => Math.floor(val * 100) + '%', getCurrentValue: () => critChance, apply: (val) => { critChance = val; }
   },
 };
 
@@ -632,20 +748,8 @@ const upgrades = {
 // SPECIAL BAR UNLOCKS
 // ============================================
 const specialBarUnlocks = {
-  boostBar: {
-    name: 'Boost Bars',
-    cost: 300,
-    unlocked: false,
-    spawnChance: 0.05,
-    description: 'Gold bars that 2x all active bar speeds'
-  },
-  cascadeBar: {
-    name: 'Cascade Bars',
-    cost: 1000,
-    unlocked: false,
-    spawnChance: 0.04,
-    description: 'Rainbow bars that guarantee max depth chains'
-  },
+  boostBar: { name: 'Boost Bars', cost: 300, unlocked: false, spawnChance: 0.05, description: 'Gold bars that 2x all active bar speeds' },
+  cascadeBar: { name: 'Cascade Bars', cost: 1000, unlocked: false, spawnChance: 0.04, description: 'Rainbow bars that guarantee max depth chains' },
 };
 
 // ============================================
@@ -653,25 +757,15 @@ const specialBarUnlocks = {
 // ============================================
 const chaosPowers = {
   completeAll: {
-    name: 'Complete All',
-    cost: 100,
-    description: 'Instantly finish all active bars',
-    activate: () => {
-      for (let bar of activeBars) {
-        if (!bar.completed) bar.progress = 1;
-      }
-    }
+    name: 'Complete All', cost: 100, description: 'Instantly finish all active bars',
+    activate: () => { for (let bar of activeBars) { if (!bar.completed) bar.progress = 1; } }
   },
   megaBoost: {
-    name: 'Mega Boost',
-    cost: 50,
-    description: '3x bars earned for 30 seconds',
-    activate: () => { megaBoostTimer = 30; }
+    name: 'Mega Boost', cost: 50, description: '3x bars earned for 30 seconds',
+    activate: () => { megaBoostTimer = 30; updateMegaOverlay(); }
   },
   luckyStorm: {
-    name: 'Lucky Storm',
-    cost: 75,
-    description: 'Next 10 completions guarantee chains',
+    name: 'Lucky Storm', cost: 75, description: 'Next 10 completions guarantee chains',
     activate: () => { luckyStormCount = 10; }
   },
 };
@@ -681,29 +775,17 @@ const chaosPowers = {
 // ============================================
 function registerCompletion() {
   const now = performance.now();
-
-  if (now - lastCompletionTime < COMBO_WINDOW) {
-    comboCount++;
-  } else {
-    comboCount = 1;
-  }
-
+  if (now - lastCompletionTime < COMBO_WINDOW) comboCount++;
+  else comboCount = 1;
   lastCompletionTime = now;
-
-  // Reset combo after window expires
   if (comboResetTimeout) clearTimeout(comboResetTimeout);
-  comboResetTimeout = setTimeout(() => {
-    comboCount = 0;
-    updateComboDisplay();
-  }, COMBO_WINDOW);
-
+  comboResetTimeout = setTimeout(() => { comboCount = 0; updateComboDisplay(); }, COMBO_WINDOW);
   updateComboDisplay();
   return comboCount;
 }
 
 function getComboMultiplier() {
   if (comboCount <= 1) return 1;
-  // Combo multiplier: 1, 1.5, 2, 2.5, 3, 3.5...
   return 1 + (comboCount - 1) * 0.5;
 }
 
@@ -713,8 +795,7 @@ function updateComboDisplay() {
     display.textContent = 'x' + getComboMultiplier().toFixed(1);
     display.classList.add('active');
     display.classList.remove('pulse');
-    void display.offsetWidth; // trigger reflow
-    display.classList.add('pulse');
+    requestAnimationFrame(() => { requestAnimationFrame(() => { display.classList.add('pulse'); }); });
   } else {
     display.classList.remove('active');
   }
@@ -725,8 +806,21 @@ function updateComboDisplay() {
 // ============================================
 function getEffectiveChainChance(depth) {
   if (luckyStormCount > 0) return 1.0;
-  const dampening = Math.pow(0.7, depth);
-  return chainChance * dampening;
+  return chainChance * Math.pow(0.7, depth);
+}
+
+// ============================================
+// HELPER
+// ============================================
+function getBarFxType(bar) {
+  if (bar.type === 'boost') return 'boost';
+  if (bar.type === 'cascade') return 'cascade';
+  if (bar.depth >= 5) return 'depth-5';
+  if (bar.depth >= 4) return 'depth-4';
+  if (bar.depth >= 3) return 'depth-3';
+  if (bar.depth >= 2) return 'depth-2';
+  if (bar.isManual) return 'manual';
+  return 'chain';
 }
 
 // ============================================
@@ -735,39 +829,29 @@ function getEffectiveChainChance(depth) {
 function determineBarType() {
   const roll = Math.random();
   let cumulative = 0;
-
-  if (specialBarUnlocks.cascadeBar.unlocked) {
-    cumulative += specialBarUnlocks.cascadeBar.spawnChance;
-    if (roll < cumulative) return 'cascade';
-  }
-  if (specialBarUnlocks.boostBar.unlocked) {
-    cumulative += specialBarUnlocks.boostBar.spawnChance;
-    if (roll < cumulative) return 'boost';
-  }
+  if (specialBarUnlocks.cascadeBar.unlocked) { cumulative += specialBarUnlocks.cascadeBar.spawnChance; if (roll < cumulative) return 'cascade'; }
+  if (specialBarUnlocks.boostBar.unlocked) { cumulative += specialBarUnlocks.boostBar.spawnChance; if (roll < cumulative) return 'boost'; }
   return 'normal';
 }
 
 function createBar(x, y, depth = 0, isManual = false) {
-  // Check manual slot limit
   if (isManual) {
-    if (manualBarsActive >= maxManualSlots) {
-      showSlotFullIndicator();
-      return null;
-    }
+    if (manualBarsActive >= maxManualSlots) { showSlotFullIndicator(); return null; }
     manualBarsActive++;
   }
 
-  // Check total bar limit
   if (activeBars.length >= MAX_ACTIVE_BARS) {
     chaosShards += QUEUE_TO_SHARDS_RATE;
+    const paRect = document.getElementById('play-area').getBoundingClientRect();
+    spawnFloatingText(Math.random() * (paRect.width - 100) + 50, Math.random() * 60 + 20, '+' + QUEUE_TO_SHARDS_RATE + ' shards', 'shard-gain');
+    spawnSparks(Math.random() * paRect.width, Math.random() * 40 + 10, 'shard', 5);
+    if (isManual) manualBarsActive--;
     updateUI();
     return null;
   }
 
   const playArea = document.getElementById('play-area');
   const rect = playArea.getBoundingClientRect();
-
-  // Clamp position
   x = Math.max(10, Math.min(x, rect.width - 150));
   y = Math.max(10, Math.min(y, rect.height - 36));
 
@@ -775,7 +859,7 @@ function createBar(x, y, depth = 0, isManual = false) {
   const depthClass = depth > 1 ? `depth-${Math.min(depth, 5)}` : (isManual ? 'manual' : 'chain');
 
   const bar = document.createElement('div');
-  bar.className = `progress-bar ${depthClass}`;
+  bar.className = `progress-bar ${depthClass} spawn-flash`;
   if (barType === 'boost') bar.classList.add('boost-bar');
   if (barType === 'cascade') bar.classList.add('cascade-bar');
   bar.style.left = x + 'px';
@@ -787,6 +871,8 @@ function createBar(x, y, depth = 0, isManual = false) {
 
   const fill = document.createElement('div');
   fill.className = `bar-fill ${depthClass}`;
+  if (barType === 'boost') fill.classList.add('boost-bar');
+  if (barType === 'cascade') fill.classList.add('cascade-bar');
   fill.style.width = '0%';
   inner.appendChild(fill);
 
@@ -798,23 +884,18 @@ function createBar(x, y, depth = 0, isManual = false) {
   }
 
   playArea.appendChild(bar);
+  setTimeout(() => bar.classList.remove('spawn-flash'), 300);
 
-  // Speed variance: ±15%
+  // Entry sparks for chain bars
+  if (depth > 0) spawnSparks(x + 70, y + 13, depthClass, 4);
+
   const variance = 0.85 + Math.random() * 0.30;
   const effectiveFillTime = baseFillTime / fillSpeedMultiplier * variance;
 
   const barData = {
-    element: bar,
-    fill: fill,
-    progress: 0,
-    type: barType,
-    depth: depth,
-    isManual: isManual,
-    x: x,
-    y: y,
-    completed: false,
-    fillTime: effectiveFillTime,
-    fillRate: 1 / effectiveFillTime, // progress per second
+    element: bar, fill: fill, progress: 0, type: barType,
+    depth: depth, isManual: isManual, x: x, y: y,
+    completed: false, fillTime: effectiveFillTime, fillRate: 1 / effectiveFillTime,
   };
 
   activeBars.push(barData);
@@ -826,64 +907,54 @@ function completeBar(bar) {
   if (bar.completed) return;
   bar.completed = true;
 
-  // Register for combo
   const combo = registerCompletion();
   const comboMult = getComboMultiplier();
-
-  // Calculate depth bonus: depth 1 = 1x, depth 2 = 1.5x, depth 3 = 2x, etc.
   const depthBonus = 1 + (bar.depth * 0.5);
-
-  // Base earning
   let earned = barsPerCompletion * depthBonus * comboMult;
   let isCrit = false;
 
-  // Crit check
-  if (Math.random() < critChance) {
-    earned *= critMultiplier;
-    isCrit = true;
-    bar.element.classList.add('crit-flash');
-  }
-
-  // Mega boost
-  if (megaBoostTimer > 0) {
-    earned *= 3;
-  }
-
+  if (Math.random() < critChance) { earned *= critMultiplier; isCrit = true; bar.element.classList.add('crit-flash'); }
+  if (megaBoostTimer > 0) earned *= 3;
   earned = Math.floor(earned);
   completedBars += earned;
 
-  // Floating text
   const textType = isCrit ? 'crit' : (combo > 1 ? 'combo' : (bar.depth > 0 ? 'depth' : 'normal'));
   spawnFloatingText(bar.x + 70, bar.y, '+' + earned, textType);
 
-  // Special bar effects
+  // === EFFECTS ===
+  const cx = bar.x + 70;
+  const cy = bar.y + 13;
+  const fxType = getBarFxType(bar);
+
+  if (isCrit) {
+    spawnExplosion(cx, cy, 'crit', 18);
+    screenShake('heavy');
+    critScreenFlash();
+  } else if (bar.type === 'cascade') {
+    spawnExplosion(cx, cy, 'cascade', 16);
+    screenShake('heavy');
+  } else if (bar.type === 'boost') {
+    spawnExplosion(cx, cy, 'boost', 14);
+    screenShake('light');
+  } else if (bar.depth >= 3) {
+    spawnExplosion(cx, cy, fxType, 12);
+    screenShake('light');
+  } else {
+    spawnExplosion(cx, cy, fxType, 8);
+  }
+
   if (bar.type === 'boost') {
-    for (let b of activeBars) {
-      if (!b.completed) {
-        b.fillRate *= 2;
-      }
-    }
+    for (let b of activeBars) { if (!b.completed) b.fillRate *= 2; }
     spawnFloatingText(bar.x + 70, bar.y - 20, 'BOOST!', 'depth');
   } else if (bar.type === 'cascade') {
-    // Cascade guarantees max chains
     bar.cascadeChain = true;
     spawnFloatingText(bar.x + 70, bar.y - 20, 'CASCADE!', 'crit');
   }
 
-  // Roll for chains
   rollChains(bar);
+  if (bar.isManual) manualBarsActive--;
+  if (luckyStormCount > 0) luckyStormCount--;
 
-  // Track manual slot
-  if (bar.isManual) {
-    manualBarsActive--;
-  }
-
-  // Lucky storm tracking
-  if (luckyStormCount > 0) {
-    luckyStormCount--;
-  }
-
-  // Remove bar
   setTimeout(() => {
     bar.element.remove();
     const idx = activeBars.indexOf(bar);
@@ -897,42 +968,35 @@ function completeBar(bar) {
 function rollChains(bar) {
   if (bar.depth >= maxChainDepth) return;
 
-  let effectiveChance = bar.cascadeChain ? maxChainDepth : getEffectiveChainChance(bar.depth);
-  if (bar.cascadeChain) effectiveChance = 1.0; // guarantee chain
+  let effectiveChance, minSpawns = 0;
+  if (bar.cascadeChain) { effectiveChance = 1.0; minSpawns = 2; }
+  else effectiveChance = getEffectiveChainChance(bar.depth);
 
-  // Calculate chains to spawn
   let chainsToSpawn = Math.floor(effectiveChance);
   const remainingChance = effectiveChance % 1;
-
-  if (Math.random() < remainingChance) {
-    chainsToSpawn++;
-  }
-
-  // Cascade bars spawn multiple chains
-  if (bar.cascadeChain) {
-    chainsToSpawn = Math.max(chainsToSpawn, 2);
-  }
+  if (Math.random() < remainingChance) chainsToSpawn++;
+  chainsToSpawn = Math.max(chainsToSpawn, minSpawns);
 
   const playArea = document.getElementById('play-area');
   const rect = playArea.getBoundingClientRect();
+  const parentCx = bar.x + 70;
+  const parentCy = bar.y + 13;
+
+  const lightningColors = ['#4ecca3', '#7eb8da', '#f1c40f', '#ff9800', '#ff5722', '#e91e63'];
+  const lColor = lightningColors[Math.min(bar.depth, lightningColors.length - 1)];
 
   for (let i = 0; i < chainsToSpawn; i++) {
-    // Spawn near parent for visual cascade effect
     const offsetX = (Math.random() - 0.5) * 200;
     const offsetY = (Math.random() - 0.5) * 100 + 40;
-    let newX = bar.x + offsetX;
-    let newY = bar.y + offsetY;
+    let newX = Math.max(10, Math.min(bar.x + offsetX, rect.width - 150));
+    let newY = Math.max(10, Math.min(bar.y + offsetY, rect.height - 36));
 
-    // Clamp to play area
-    newX = Math.max(10, Math.min(newX, rect.width - 150));
-    newY = Math.max(10, Math.min(newY, rect.height - 36));
+    // Chain lightning
+    spawnLightning(parentCx, parentCy, newX + 70, newY + 13, lColor);
 
-    // Small delay for visual effect
     setTimeout(() => {
       const newBar = createBar(newX, newY, bar.depth + 1, false);
-      if (newBar && bar.cascadeChain) {
-        newBar.cascadeChain = true; // propagate cascade
-      }
+      if (newBar && bar.cascadeChain) newBar.cascadeChain = true;
     }, i * 50);
   }
 }
@@ -945,7 +1009,6 @@ function spawnFloatingText(x, y, text, type = 'normal') {
   ft.style.left = x + 'px';
   ft.style.top = y + 'px';
   playArea.appendChild(ft);
-
   setTimeout(() => ft.remove(), 1200);
 }
 
@@ -959,21 +1022,17 @@ function showSlotFullIndicator() {
 // GAME LOOP
 // ============================================
 let lastTime = performance.now();
-let gameRunning = true;
 
 function processTime(dt) {
-  // Update mega boost timer
   if (megaBoostTimer > 0) {
     megaBoostTimer -= dt;
-    if (megaBoostTimer <= 0) megaBoostTimer = 0;
+    if (megaBoostTimer <= 0) { megaBoostTimer = 0; updateMegaOverlay(); }
   }
 
-  // Update bars
-  for (let bar of activeBars) {
+  for (let i = activeBars.length - 1; i >= 0; i--) {
+    const bar = activeBars[i];
     if (bar.completed) continue;
-
     bar.progress += bar.fillRate * dt;
-
     if (bar.progress >= 1) {
       bar.progress = 1;
       bar.fill.style.width = '100%';
@@ -988,33 +1047,25 @@ function gameLoop() {
   const now = performance.now();
   const dt = Math.min((now - lastTime) / 1000, 0.1);
   lastTime = now;
-
   processTime(dt);
-
+  updateParticles(dt);
+  drawParticles();
   requestAnimationFrame(gameLoop);
 }
 
-// Background timer - runs even when tab unfocused (throttled to ~1Hz)
 function backgroundTick() {
   if (document.hidden) {
     const now = performance.now();
-    const dt = Math.min((now - lastTime) / 1000, 2); // Cap at 2 seconds per tick
+    const dt = Math.min((now - lastTime) / 1000, 2);
     lastTime = now;
     processTime(dt);
     updateUI();
   }
 }
 
-// Catch up when tab becomes visible again
 function handleVisibilityChange() {
-  if (!document.hidden) {
-    // Tab became visible - sync time
-    lastTime = performance.now();
-    updateUI();
-    renderSidebar();
-  }
+  if (!document.hidden) { lastTime = performance.now(); updateUI(); if (shopOpen) renderSidebar(); }
 }
-
 document.addEventListener('visibilitychange', handleVisibilityChange);
 
 // ============================================
@@ -1022,45 +1073,29 @@ document.addEventListener('visibilitychange', handleVisibilityChange);
 // ============================================
 function buyUpgrade(upgradeKey) {
   const upgrade = upgrades[upgradeKey];
-  const currentLevel = upgrade.currentLevel;
-
-  if (currentLevel >= upgrade.levels.length) return;
-
-  const nextLevel = upgrade.levels[currentLevel];
+  if (upgrade.currentLevel >= upgrade.levels.length) return;
+  const nextLevel = upgrade.levels[upgrade.currentLevel];
   if (completedBars < nextLevel.cost) return;
-
   completedBars -= nextLevel.cost;
   upgrade.currentLevel++;
   upgrade.apply(nextLevel.value);
-
-  updateUI();
-  renderSidebar();
-  saveGame(); // Immediate save after purchase
+  updateUI(); renderSidebar(); saveGame();
 }
 
 function unlockSpecialBar(barType) {
   const unlock = specialBarUnlocks[barType];
-  if (unlock.unlocked) return;
-  if (completedBars < unlock.cost) return;
-
+  if (unlock.unlocked || completedBars < unlock.cost) return;
   completedBars -= unlock.cost;
   unlock.unlocked = true;
-
-  updateUI();
-  renderSidebar();
-  saveGame(); // Immediate save after unlock
+  updateUI(); renderSidebar(); saveGame();
 }
 
 function activateChaosPower(powerKey) {
   const power = chaosPowers[powerKey];
   if (chaosShards < power.cost) return;
-
   chaosShards -= power.cost;
   power.activate();
-
-  updateUI();
-  renderSidebar();
-  saveGame(); // Immediate save after power use
+  updateUI(); renderSidebar(); saveGame();
 }
 
 // ============================================
@@ -1073,27 +1108,15 @@ function formatNumber(num) {
 }
 
 function calculateBarsPerSecond() {
-  let totalPerSecond = 0;
-
+  let total = 0;
   for (const bar of activeBars) {
     if (bar.completed) continue;
-
-    const depthBonus = 1 + (bar.depth * 0.5);
-    let value = barsPerCompletion * depthBonus;
-
-    // Apply mega boost if active
+    let value = barsPerCompletion * (1 + bar.depth * 0.5);
     if (megaBoostTimer > 0) value *= 3;
-
-    // Value per second = value / remaining time
-    const remainingProgress = 1 - bar.progress;
-    const remainingTime = remainingProgress / bar.fillRate;
-
-    if (remainingTime > 0) {
-      totalPerSecond += value / remainingTime;
-    }
+    const remaining = (1 - bar.progress) / bar.fillRate;
+    if (remaining > 0) total += value / remaining;
   }
-
-  return totalPerSecond;
+  return total;
 }
 
 function updateUI() {
@@ -1105,100 +1128,46 @@ function updateUI() {
 }
 
 function renderSidebar() {
-  // Render upgrades
   const upgradesSection = document.getElementById('upgrades-section');
   upgradesSection.innerHTML = '<div class="section-title">Upgrades</div>';
-
   for (const [key, upgrade] of Object.entries(upgrades)) {
-    const currentLevel = upgrade.currentLevel;
-    const isMaxed = currentLevel >= upgrade.levels.length;
-    const nextLevel = isMaxed ? null : upgrade.levels[currentLevel];
-    const canAfford = nextLevel && completedBars >= nextLevel.cost;
-
+    const cl = upgrade.currentLevel;
+    const isMaxed = cl >= upgrade.levels.length;
+    const nl = isMaxed ? null : upgrade.levels[cl];
+    const canAfford = nl && completedBars >= nl.cost;
     const item = document.createElement('div');
     item.className = 'upgrade-item' + (isMaxed ? ' maxed' : (!canAfford ? ' disabled' : ''));
-
-    let valuesHtml = '';
-    const currentValue = upgrade.getCurrentValue();
-
-    if (isMaxed) {
-      valuesHtml = `<span class="current-value">${upgrade.getDisplay(currentValue)}</span> <span style="color:#4ecca3">MAX</span>`;
-    } else {
-      valuesHtml = `<span class="current-value">${upgrade.getDisplay(currentValue)}</span> <span class="arrow">→</span> <span class="next-value">${upgrade.getDisplay(nextLevel.value)}</span>`;
-    }
-
-    item.innerHTML = `
-      <div class="item-header">
-        <span class="item-name">${upgrade.name}</span>
-        <span class="item-level">${currentLevel}/${upgrade.levels.length}</span>
-      </div>
-      <div class="item-values">${valuesHtml}</div>
-      ${!isMaxed ? `<div class="item-cost ${canAfford ? 'affordable' : ''}">Cost: ${formatNumber(nextLevel.cost)} bars</div>` : ''}
-    `;
-
-    if (!isMaxed && canAfford) {
-      item.onclick = () => buyUpgrade(key);
-    }
-
+    const cv = upgrade.getCurrentValue();
+    let valuesHtml = isMaxed
+      ? `<span class="current-value">${upgrade.getDisplay(cv)}</span> <span style="color:#4ecca3">MAX</span>`
+      : `<span class="current-value">${upgrade.getDisplay(cv)}</span> <span class="arrow">→</span> <span class="next-value">${upgrade.getDisplay(nl.value)}</span>`;
+    item.innerHTML = `<div class="item-header"><span class="item-name">${upgrade.name}</span><span class="item-level">${cl}/${upgrade.levels.length}</span></div><div class="item-values">${valuesHtml}</div>${!isMaxed ? `<div class="item-cost ${canAfford ? 'affordable' : ''}">Cost: ${formatNumber(nl.cost)} bars</div>` : ''}`;
+    if (!isMaxed && canAfford) item.onclick = () => buyUpgrade(key);
     upgradesSection.appendChild(item);
   }
 
-  // Render unlocks
   const unlocksSection = document.getElementById('unlocks-section');
   unlocksSection.innerHTML = '<div class="section-title">Special Bars</div>';
-
   for (const [key, unlock] of Object.entries(specialBarUnlocks)) {
     const canAfford = completedBars >= unlock.cost;
-
     const item = document.createElement('div');
     item.className = 'unlock-item' + (unlock.unlocked ? ' unlocked' : (!canAfford ? ' disabled' : ''));
-
-    item.innerHTML = `
-      <div class="item-header">
-        <span class="item-name">${unlock.name}</span>
-        ${unlock.unlocked ? '<span class="unlock-badge">UNLOCKED</span>' : ''}
-      </div>
-      <div class="item-description">${unlock.description}</div>
-      ${!unlock.unlocked ? `<div class="item-cost ${canAfford ? 'affordable' : ''}">Cost: ${formatNumber(unlock.cost)} bars</div>` : ''}
-    `;
-
-    if (!unlock.unlocked && canAfford) {
-      item.onclick = () => unlockSpecialBar(key);
-    }
-
+    item.innerHTML = `<div class="item-header"><span class="item-name">${unlock.name}</span>${unlock.unlocked ? '<span class="unlock-badge">UNLOCKED</span>' : ''}</div><div class="item-description">${unlock.description}</div>${!unlock.unlocked ? `<div class="item-cost ${canAfford ? 'affordable' : ''}">Cost: ${formatNumber(unlock.cost)} bars</div>` : ''}`;
+    if (!unlock.unlocked && canAfford) item.onclick = () => unlockSpecialBar(key);
     unlocksSection.appendChild(item);
   }
 
-  // Render chaos powers
   const powersSection = document.getElementById('powers-section');
   powersSection.innerHTML = '<div class="section-title">Chaos Powers</div>';
-
   for (const [key, power] of Object.entries(chaosPowers)) {
     const canAfford = chaosShards >= power.cost;
-
     const item = document.createElement('div');
     item.className = 'power-item' + (!canAfford ? ' disabled' : '');
-
     let timerHtml = '';
-    if (key === 'megaBoost' && megaBoostTimer > 0) {
-      timerHtml = `<div class="power-timer">Active: ${Math.ceil(megaBoostTimer)}s</div>`;
-    } else if (key === 'luckyStorm' && luckyStormCount > 0) {
-      timerHtml = `<div class="power-timer">Remaining: ${luckyStormCount}</div>`;
-    }
-
-    item.innerHTML = `
-      <div class="item-header">
-        <span class="item-name">${power.name}</span>
-      </div>
-      <div class="item-description">${power.description}</div>
-      <div class="item-cost shards ${canAfford ? 'affordable' : ''}">${power.cost} shards</div>
-      ${timerHtml}
-    `;
-
-    if (canAfford) {
-      item.onclick = () => activateChaosPower(key);
-    }
-
+    if (key === 'megaBoost' && megaBoostTimer > 0) timerHtml = `<div class="power-timer">Active: ${Math.ceil(megaBoostTimer)}s</div>`;
+    else if (key === 'luckyStorm' && luckyStormCount > 0) timerHtml = `<div class="power-timer">Remaining: ${luckyStormCount}</div>`;
+    item.innerHTML = `<div class="item-header"><span class="item-name">${power.name}</span></div><div class="item-description">${power.description}</div><div class="item-cost shards ${canAfford ? 'affordable' : ''}">${power.cost} shards</div>${timerHtml}`;
+    if (canAfford) item.onclick = () => activateChaosPower(key);
     powersSection.appendChild(item);
   }
 }
@@ -1206,14 +1175,8 @@ function renderSidebar() {
 // ============================================
 // MODAL CONTROL
 // ============================================
-function openShop() {
-  document.getElementById('modal-overlay').classList.add('open');
-  renderSidebar(); // Refresh content when opening
-}
-
-function closeShop() {
-  document.getElementById('modal-overlay').classList.remove('open');
-}
+function openShop() { shopOpen = true; document.getElementById('modal-overlay').classList.add('open'); renderSidebar(); }
+function closeShop() { shopOpen = false; document.getElementById('modal-overlay').classList.remove('open'); }
 
 // ============================================
 // INPUT HANDLING
@@ -1221,22 +1184,21 @@ function closeShop() {
 function handleClick(e) {
   const playArea = document.getElementById('play-area');
   const rect = playArea.getBoundingClientRect();
-
-  let x = e.clientX - rect.left - 70;
-  let y = e.clientY - rect.top - 13;
-
-  createBar(x, y, 0, true); // isManual = true
+  spawnClickRipple(e.clientX - rect.left, e.clientY - rect.top);
+  createBar(e.clientX - rect.left - 70, e.clientY - rect.top - 13, 0, true);
 }
 
 // ============================================
 // INITIALIZATION
 // ============================================
 function init() {
-  // Load saved game
   const loaded = loadGame();
-  if (loaded) {
-    console.log('Game loaded from save');
-  }
+  if (loaded) console.log('Game loaded from save');
+
+  fxCanvas = document.getElementById('fx-canvas');
+  fxCtx = fxCanvas.getContext('2d');
+  resizeFxCanvas();
+  window.addEventListener('resize', resizeFxCanvas);
 
   const playArea = document.getElementById('play-area');
   playArea.addEventListener('click', handleClick);
@@ -1246,30 +1208,19 @@ function init() {
     handleClick({ clientX: touch.clientX, clientY: touch.clientY });
   });
 
-  // Shop modal controls
   document.getElementById('shop-button').addEventListener('click', openShop);
   document.getElementById('close-modal').addEventListener('click', closeShop);
-  document.getElementById('modal-overlay').addEventListener('click', (e) => {
-    if (e.target.id === 'modal-overlay') closeShop(); // Click outside to close
-  });
+  document.getElementById('modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'modal-overlay') closeShop(); });
 
+  updateMegaOverlay();
   updateUI();
   renderSidebar();
   gameLoop();
 
-  // Update sidebar periodically for timers
-  setInterval(renderSidebar, 1000);
-
-  // Background timer for when tab is unfocused
+  setInterval(() => { if (shopOpen) renderSidebar(); }, 1000);
   setInterval(backgroundTick, 1000);
-
-  // Auto-save every 5 seconds
   setInterval(saveGame, 5000);
-
-  // Save on page unload
   window.addEventListener('beforeunload', saveGame);
-
-  // Expose clearSave for debugging
   window.clearSave = clearSave;
   console.log('Tip: Call clearSave() in console to reset progress');
 }
