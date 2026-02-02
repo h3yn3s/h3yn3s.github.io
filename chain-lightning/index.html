@@ -464,7 +464,7 @@ function resizeCanvases(){
   const pa=document.getElementById('play-area'),r=pa.getBoundingClientRect();
   [gameCanvas,fxCanvas,uiCanvas].forEach(c=>{c.width=r.width;c.height=r.height;});
   G.cx=r.width/2;G.cy=r.height/2;
-  G.scale=Math.min(r.width,r.height)/400;
+  G.scale=Math.min(1.0,Math.min(r.width,r.height)/400);
 }
 
 function spawnEnemy(type){
