@@ -98,6 +98,29 @@
     .settings-item .desc{font-size:10px;color:#444;margin-top:4px;text-align:center;}
     #close-settings{position:absolute;top:10px;right:14px;background:none;border:none;color:#555;font-size:20px;cursor:pointer;}
     #close-settings:hover{color:#fff;}
+    #perk-overlay{
+      position:absolute;top:0;left:0;right:0;bottom:0;z-index:55;display:none;
+      justify-content:center;align-items:center;flex-direction:column;gap:14px;
+      background:rgba(6,6,14,0.92);backdrop-filter:blur(6px);padding:16px;
+    }
+    #perk-overlay.show{display:flex;}
+    #perk-overlay h2{font-family:'Cinzel',serif;font-size:20px;color:#ffaa33;text-shadow:0 0 20px rgba(255,170,51,0.4);margin:0;}
+    #perk-overlay .perk-subtitle{font-size:11px;color:#666;margin-bottom:4px;}
+    .perk-choices{display:flex;flex-direction:column;gap:10px;width:100%;max-width:320px;}
+    .perk-card{
+      background:rgba(255,255,255,0.03);border:1px solid rgba(255,170,51,0.3);border-radius:10px;
+      padding:14px;cursor:pointer;transition:all 0.15s;
+    }
+    .perk-card:hover{border-color:#ffaa33;background:rgba(255,170,51,0.08);transform:scale(1.02);}
+    .perk-card .perk-name{font-family:'Cinzel',serif;font-size:14px;color:#ffaa33;margin-bottom:4px;}
+    .perk-card .perk-desc{font-size:11px;color:#888;line-height:1.4;}
+    .perk-card .perk-icon{font-size:18px;float:left;margin-right:10px;}
+    .active-perks{position:absolute;top:6px;right:8px;display:flex;gap:4px;z-index:7;}
+    .active-perks .perk-pip{
+      width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;
+      font-size:11px;background:rgba(255,170,51,0.15);border:1px solid rgba(255,170,51,0.3);
+      cursor:default;
+    }
     #hp-bar-container{
       position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:6;
       width:120px;height:8px;border-radius:4px;border:1px solid rgba(255,68,102,0.5);
@@ -155,6 +178,12 @@
       <div id="flash-overlay"></div>
       <div id="wave-announce"></div>
       <div id="hp-bar-container"><div id="hp-bar-fill"></div></div>
+      <div class="active-perks" id="active-perks"></div>
+      <div id="perk-overlay">
+        <h2>⚡ POWER UP</h2>
+        <div class="perk-subtitle">Choose an ability</div>
+        <div class="perk-choices" id="perk-choices"></div>
+      </div>
       <div id="game-over-overlay">
         <h1>DEFEATED</h1>
         <div class="go-stats" id="go-stats"></div>
@@ -190,7 +219,7 @@ const G={
   paused:false,gameOver:false,
   bestChain:0,totalDamageDealt:0,recentKills:[],dps:0,
   spawnRate:1.4,spawnTimer:0,
-  cx:0,cy:0,
+  cx:0,cy:0,scale:1,
 };
 
 // Base stats (never change — legacy bonuses are added on top)
@@ -274,24 +303,184 @@ const ENEMY_TYPES={
   swarmling:{color:'#cc66ff',radius:5,hp:5,speed:44,value:1},
 };
 
+// ============ PERKS SYSTEM (stackable, 8 perks, 3 ranks each) ============
+// perkLevels tracks rank (0=not picked, 1-3=rank)
+const perkLevels={};
+const PERK_MILESTONE_INTERVAL=5;
+
+/*
+ * FUTURE ABILITY CATALOG (not yet implemented — keep for reference):
+ *
+ * OFFENSIVE:
+ *   Overload       — every 5th hit in a single cast does 3x damage
+ *   ProximityBlast — damage scales 2.0x close → 0.8x max jump range
+ *   Poison         — 10% base dmg/tick for 4s, spreads to 50px on death
+ *   BurningGround  — fire patch on death (30px, 4s, 15% base dmg/tick)
+ *   LightningStorm — every 4s, 3 random strikes at 50% base dmg, 30px splash
+ *
+ * UTILITY:
+ *   Vortex         — every 10s at 80% cast range, pulls enemies for 2s
+ *
+ * BUILD-DEFINING:
+ *   ShotgunSplit   — 3 bolts in 60° cone, 50% dmg each, chain independently
+ */
+
+const PERKS={
+  executioner:{
+    icon:'🗡',name:'Executioner',maxRank:3,
+    ranks:[
+      {desc:'2x damage to enemies below 30% HP',mult:2.0,threshold:0.3},
+      {desc:'2.5x damage to enemies below 40% HP',mult:2.5,threshold:0.4},
+      {desc:'3x damage to enemies below 50% HP',mult:3.0,threshold:0.5},
+    ],
+  },
+  deathSpark:{
+    icon:'💥',name:'Death Spark',maxRank:3,
+    ranks:[
+      {desc:'Enemies explode on death: 30% base dmg, 40px radius',dmgPct:0.3,radius:40},
+      {desc:'Stronger explosion: 45% base dmg, 55px radius',dmgPct:0.45,radius:55},
+      {desc:'Massive explosion: 60% base dmg, 70px radius',dmgPct:0.6,radius:70},
+    ],
+  },
+  burn:{
+    icon:'🔥',name:'Burn',maxRank:3,
+    ranks:[
+      {desc:'Burn: 20% base dmg/tick for 3s',tickPct:0.2,duration:3},
+      {desc:'Hotter: 30% base dmg/tick for 4s',tickPct:0.3,duration:4},
+      {desc:'Inferno: 40% base dmg/tick for 5s',tickPct:0.4,duration:5},
+    ],
+  },
+  frost:{
+    icon:'❄',name:'Frost',maxRank:3,
+    ranks:[
+      {desc:'Slow enemies 40% for 2s',slow:0.4,duration:2},
+      {desc:'Chill: 55% slow for 3s',slow:0.55,duration:3},
+      {desc:'Deep freeze: 70% slow for 4s',slow:0.7,duration:4},
+    ],
+  },
+  bloodlust:{
+    icon:'🩸',name:'Bloodlust',maxRank:3,
+    ranks:[
+      {desc:'+3% crit per kill in last 5s',critPer:0.03,spdPer:0},
+      {desc:'+5% crit per kill in last 5s',critPer:0.05,spdPer:0},
+      {desc:'+7% crit & +10% cast speed per kill in last 5s',critPer:0.07,spdPer:0.10},
+    ],
+  },
+  shield:{
+    icon:'🛡',name:'Shield',maxRank:3,
+    ranks:[
+      {desc:'Absorb 1 hit, 12s recharge',charges:1,rechargeTime:12},
+      {desc:'Faster: 1 charge, 8s recharge',charges:1,rechargeTime:8},
+      {desc:'Fortified: 2 charges, 6s recharge',charges:2,rechargeTime:6},
+    ],
+  },
+  momentum:{
+    icon:'⚡',name:'Momentum',maxRank:3,
+    ranks:[
+      {desc:'4+ chain → 30% cast speed for 3s',chainReq:4,speedBoost:0.3,duration:3},
+      {desc:'3+ chain → 40% cast speed for 4s',chainReq:3,speedBoost:0.4,duration:4},
+      {desc:'2+ chain → 50% cast speed for 5s',chainReq:2,speedBoost:0.5,duration:5},
+    ],
+  },
+  pushback:{
+    icon:'💨',name:'Pushback',maxRank:3,
+    ranks:[
+      {desc:'Hits knock enemies back 15px',dist:15,slow:0,dmgBonus:0},
+      {desc:'25px knockback + 0.3s slow',dist:25,slow:0.3,dmgBonus:0},
+      {desc:'35px knockback + 0.5s slow + 15% dmg',dist:35,slow:0.5,dmgBonus:0.15},
+    ],
+  },
+};
+
+// Shield & momentum runtime state
+const shieldState={charges:0,maxCharges:0,rechargeTimer:0,rechargeTime:12};
+const momentumState={active:false,timer:0,speedBoost:0};
+
+function perkRank(id){return perkLevels[id]||0;}
+function hasPerk(id){return perkRank(id)>0;}
+function perkData(id){const r=perkRank(id);return r>0?PERKS[id].ranks[r-1]:null;}
+
+function resetPerks(){
+  for(const k of Object.keys(PERKS))perkLevels[k]=0;
+  shieldState.charges=0;shieldState.maxCharges=0;shieldState.rechargeTimer=0;
+  momentumState.active=false;momentumState.timer=0;momentumState.speedBoost=0;
+  updatePerkPips();
+}
+
+function showPerkPick(){
+  G.paused=true;
+  // All perks below max rank are eligible
+  const available=Object.keys(PERKS).filter(k=>perkRank(k)<PERKS[k].maxRank);
+  if(available.length===0){G.paused=false;return;}
+  const shuffled=available.sort(()=>Math.random()-0.5);
+  const choices=shuffled.slice(0,Math.min(3,shuffled.length));
+  const container=document.getElementById('perk-choices');
+  container.innerHTML='';
+  for(const id of choices){
+    const p=PERKS[id];
+    const nextRank=perkRank(id)+1;
+    const rd=p.ranks[nextRank-1];
+    const rankLabel=nextRank>1?` <span style="color:#ffaa33;font-size:10px">Rank ${nextRank}</span>`:'';
+    const card=document.createElement('div');
+    card.className='perk-card';
+    card.innerHTML=`<span class="perk-icon">${p.icon}</span><div class="perk-name">${p.name}${rankLabel}</div><div class="perk-desc">${rd.desc}</div>`;
+    card.onclick=()=>pickPerk(id);
+    container.appendChild(card);
+  }
+  document.getElementById('perk-overlay').classList.add('show');
+}
+
+function pickPerk(id){
+  perkLevels[id]=(perkLevels[id]||0)+1;
+  // Init shield state on first pick or rank up
+  if(id==='shield'){
+    const d=perkData(id);
+    shieldState.maxCharges=d.charges;shieldState.charges=d.charges;
+    shieldState.rechargeTime=d.rechargeTime;shieldState.rechargeTimer=0;
+  }
+  document.getElementById('perk-overlay').classList.remove('show');
+  updatePerkPips();
+  G.paused=false;
+  lastTime=performance.now();
+}
+
+function updatePerkPips(){
+  const el=document.getElementById('active-perks');
+  el.innerHTML='';
+  for(const[id,p]of Object.entries(PERKS)){
+    const rank=perkRank(id);
+    if(rank===0)continue;
+    const pip=document.createElement('div');
+    pip.className='perk-pip';pip.title=`${p.name} Rank ${rank}`;
+    pip.textContent=p.icon;
+    if(rank>1){const dot=document.createElement('span');
+      dot.style.cssText='position:absolute;bottom:-2px;right:-2px;font-size:7px;color:#ffaa33;';
+      dot.textContent=rank;pip.style.position='relative';pip.appendChild(dot);}
+    el.appendChild(pip);
+  }
+}
+
 function resizeCanvases(){
   const pa=document.getElementById('play-area'),r=pa.getBoundingClientRect();
   [gameCanvas,fxCanvas,uiCanvas].forEach(c=>{c.width=r.width;c.height=r.height;});
   G.cx=r.width/2;G.cy=r.height/2;
+  G.scale=Math.min(r.width,r.height)/400;
 }
 
 function spawnEnemy(type){
-  const t=ENEMY_TYPES[type];
-  const hpScale=1+Math.log2(G.wave)*0.25;
-  const spdScale=1+G.wave*0.02;
+  const t=ENEMY_TYPES[type];const s=G.scale;
+  const w=Math.max(0,G.wave-1);
+  const hpScale=1+w*0.10+Math.pow(w/12,2);
+  const spdScale=1+G.wave*0.02+Math.max(0,(G.wave-15)*0.03);
   const a=Math.random()*Math.PI*2,dist=Math.max(gameCanvas.width,gameCanvas.height)*0.7+30;
   const x=G.cx+Math.cos(a)*dist,y=G.cy+Math.sin(a)*dist;
   const dx=G.cx-x,dy=G.cy-y,d=Math.sqrt(dx*dx+dy*dy);
-  const spd=t.speed*spdScale;
+  const spd=t.speed*spdScale*s;
   enemies.push({x,y,vx:(dx/d)*spd,vy:(dy/d)*spd,
     hp:Math.ceil(t.hp*hpScale),maxHp:Math.ceil(t.hp*hpScale),
-    radius:t.radius,color:t.color,type,value:t.value,
-    stunTimer:0,shield:t.shield||false,hitFlash:0,deathTimer:-1});
+    radius:Math.max(3,t.radius*s),color:t.color,type,value:t.value,
+    stunTimer:0,stunCount:0,burnTimer:0,burnTick:0,frostTimer:0,
+    shield:t.shield||false,hitFlash:0,deathTimer:-1});
 }
 
 function spawnSwarm(){
@@ -303,7 +492,7 @@ function getSpawnType(){
   const w=G.wave,r=Math.random();
   if(w>=10&&r<0.06)return'swarm';
   if(w>=7&&r<0.12)return'shielded';
-  if(w>=4&&r<0.20)return'brute';
+  if(w>=6&&r<0.10)return'brute';
   if(w>=2&&r<0.30)return'runner';
   return'grunt';
 }
@@ -319,7 +508,8 @@ function findTarget(fx,fy,range,exclude){
 }
 
 function castChainLightning(fx,fy){
-  const first=findTarget(fx,fy,G.castRange,new Set());
+  const s=G.scale;
+  const first=findTarget(fx,fy,G.castRange*s,new Set());
   if(!first)return false;
 
   const hit=new Set([first]);
@@ -333,14 +523,14 @@ function castChainLightning(fx,fy){
     const next=[];
     for(const f of frontier){
       if(jumpsUsed>=G.jumpCount)break;
-      const t=findTarget(f.x,f.y,G.jumpDistance,hit);
+      const t=findTarget(f.x,f.y,G.jumpDistance*s,hit);
       if(!t)continue;
       hit.add(t);targets.push(t);jumpsUsed++;
       chain.push({x:f.x,y:f.y,target:t});
       next.push({x:t.x,y:t.y});
       // Fork
       if(G.forkChance>0&&Math.random()<G.forkChance&&jumpsUsed<G.jumpCount){
-        const ft=findTarget(f.x,f.y,G.jumpDistance,hit);
+        const ft=findTarget(f.x,f.y,G.jumpDistance*s,hit);
         if(ft){hit.add(ft);targets.push(ft);jumpsUsed++;
           chain.push({x:f.x,y:f.y,target:ft});
           next.push({x:ft.x,y:ft.y});}
@@ -376,6 +566,11 @@ function castChainLightning(fx,fy){
   if(totalHits>=8){screenShake('mega');screenFlash('mega-flash');}
   else if(totalHits>=4){screenShake('heavy');screenFlash('flash');}
   else if(totalHits>=2)screenShake('light');
+  // Momentum: activate speed boost on big chains
+  if(hasPerk('momentum')){
+    const d=perkData('momentum');
+    if(totalHits>=d.chainReq){momentumState.active=true;momentumState.timer=d.duration;momentumState.speedBoost=d.speedBoost;}
+  }
   mageChargeVisual=1.0;
   return true;
 }
@@ -388,8 +583,38 @@ function applyDamage(e,dmg,isCrit){
     spawnFloatingText(e.x,e.y-e.radius-5,'SHIELD!','#33aaff',14);
     createShockwave(e.x,e.y,30,'#33aaff');return;
   }
+  // Executioner: bonus damage to low HP enemies
+  if(hasPerk('executioner')){
+    const d=perkData('executioner');
+    if(e.hp<e.maxHp*d.threshold)dmg=Math.ceil(dmg*d.mult);
+  }
+  // Bloodlust: bonus crit from recent kills
+  if(hasPerk('bloodlust')&&!isCrit){
+    const d=perkData('bloodlust');
+    const bonusCrit=G.recentKills.length*d.critPer;
+    if(Math.random()<bonusCrit){isCrit=true;dmg=Math.ceil(dmg*G.critDamage);}
+  }
+  // Pushback: bonus damage at rank 3
+  if(hasPerk('pushback')){
+    const d=perkData('pushback');
+    if(d.dmgBonus>0)dmg=Math.ceil(dmg*(1+d.dmgBonus));
+  }
   e.hp-=dmg;e.hitFlash=0.2;
-  e.stunTimer=Math.max(e.stunTimer,0.15+(G.stunDuration>0?G.stunDuration:0));
+  const baseStun=0.15+(G.stunDuration>0?G.stunDuration:0);
+  const diminished=baseStun*Math.pow(0.5,e.stunCount);
+  if(diminished>0.05){e.stunTimer=Math.max(e.stunTimer,diminished);e.stunCount++;}
+  // Burn
+  if(hasPerk('burn')){const d=perkData('burn');e.burnTimer=d.duration;}
+  // Frost
+  if(hasPerk('frost')){const d=perkData('frost');e.frostTimer=d.duration;}
+  // Pushback: knock enemy away from mage
+  if(hasPerk('pushback')){
+    const d=perkData('pushback');
+    const dx=e.x-G.cx,dy=e.y-G.cy,dist=Math.sqrt(dx*dx+dy*dy)||1;
+    const kb=d.dist*G.scale;
+    e.x+=dx/dist*kb;e.y+=dy/dist*kb;
+    if(d.slow>0)e.frostTimer=Math.max(e.frostTimer||0,d.slow);
+  }
   const txt=isCrit?'⚡'+dmg:''+dmg;
   const col=isCrit?'#ffdd44':'#fff';
   const sz=isCrit?18:13;
@@ -403,6 +628,22 @@ function killEnemy(e){
   G.recentKills.push(performance.now());
   spawnDeathExplosion(e.x,e.y,e.color,e.radius);
   createShockwave(e.x,e.y,e.radius*2.5,e.color);
+  // Death Spark: AoE explosion on death
+  if(hasPerk('deathSpark')){
+    const d=perkData('deathSpark');
+    const splashDmg=Math.ceil(G.baseDamage*d.dmgPct);
+    const splashR=d.radius*G.scale;
+    for(const o of enemies){
+      if(o===e||o.deathTimer>=0)continue;
+      const dx=o.x-e.x,dy=o.y-e.y;
+      if(dx*dx+dy*dy<splashR*splashR){
+        o.hp-=splashDmg;o.hitFlash=0.15;
+        spawnFloatingText(o.x,o.y-o.radius-5,''+splashDmg,'#ff8833',10);
+        if(o.hp<=0)killEnemy(o);
+      }
+    }
+    createShockwave(e.x,e.y,splashR,'#ff8833');
+  }
 }
 
 // ============ FX ============
@@ -446,7 +687,7 @@ function createShockwave(x,y,maxR,color){shockwaves.push({x,y,radius:5,maxRadius
 function spawnFloatingText(x,y,text,color,size){floatingTexts.push({x,y,text,color,size:size||13,life:0.8,maxLife:0.8});}
 
 function spawnMageRingParticle(){
-  const a=Math.random()*Math.PI*2,r=18+Math.random()*4;
+  const a=Math.random()*Math.PI*2,r=(18+Math.random()*4)*G.scale;
   particles.push({x:G.cx+Math.cos(a)*r,y:G.cy+Math.sin(a)*r,
     vx:Math.cos(a+1.5)*12,vy:Math.sin(a+1.5)*12,
     life:0.5+Math.random()*0.5,maxLife:0.7,size:1+Math.random(),color:'#6ee7ff',gravity:0,friction:0.98});
@@ -462,26 +703,38 @@ function drawGame(dt){
   for(let y=gs;y<gameCanvas.height;y+=gs){gameCtx.beginPath();gameCtx.moveTo(0,y);gameCtx.lineTo(gameCanvas.width,y);gameCtx.stroke();}
   // Range circle
   gameCtx.strokeStyle='rgba(110,231,255,0.06)';gameCtx.setLineDash([4,8]);
-  gameCtx.beginPath();gameCtx.arc(G.cx,G.cy,G.castRange,0,Math.PI*2);gameCtx.stroke();gameCtx.setLineDash([]);
+  gameCtx.beginPath();gameCtx.arc(G.cx,G.cy,G.castRange*G.scale,0,Math.PI*2);gameCtx.stroke();gameCtx.setLineDash([]);
   // Mage
-  mageGlowPhase+=dt*2;
-  const gp=0.6+Math.sin(mageGlowPhase)*0.2,cg=mageChargeVisual*30;
-  const grad=gameCtx.createRadialGradient(G.cx,G.cy,0,G.cx,G.cy,35+cg);
+  mageGlowPhase+=dt*2;const s=G.scale;
+  const gp=0.6+Math.sin(mageGlowPhase)*0.2,cg=mageChargeVisual*30*s;
+  const grad=gameCtx.createRadialGradient(G.cx,G.cy,0,G.cx,G.cy,(35+cg)*s);
   grad.addColorStop(0,`rgba(110,231,255,${0.15*gp+mageChargeVisual*0.3})`);
   grad.addColorStop(0.5,`rgba(110,231,255,${0.06*gp})`);grad.addColorStop(1,'transparent');
-  gameCtx.fillStyle=grad;gameCtx.fillRect(G.cx-60,G.cy-60,120,120);
+  const gr=60*s;gameCtx.fillStyle=grad;gameCtx.fillRect(G.cx-gr,G.cy-gr,gr*2,gr*2);
   gameCtx.save();gameCtx.translate(G.cx,G.cy);gameCtx.rotate(mageGlowPhase*0.3);
   gameCtx.strokeStyle=`rgba(110,231,255,${0.3+mageChargeVisual*0.5})`;gameCtx.lineWidth=1.5;
-  gameCtx.beginPath();gameCtx.arc(0,0,20,0,Math.PI*2);gameCtx.stroke();
+  gameCtx.beginPath();gameCtx.arc(0,0,20*s,0,Math.PI*2);gameCtx.stroke();
   for(let i=0;i<6;i++){const a=(Math.PI*2/6)*i;gameCtx.beginPath();
-    gameCtx.moveTo(Math.cos(a)*16,Math.sin(a)*16);gameCtx.lineTo(Math.cos(a)*23,Math.sin(a)*23);gameCtx.stroke();}
+    gameCtx.moveTo(Math.cos(a)*16*s,Math.sin(a)*16*s);gameCtx.lineTo(Math.cos(a)*23*s,Math.sin(a)*23*s);gameCtx.stroke();}
   gameCtx.restore();
   gameCtx.fillStyle=`rgba(110,231,255,${0.7+mageChargeVisual*0.3})`;
-  gameCtx.beginPath();gameCtx.arc(G.cx,G.cy,6,0,Math.PI*2);gameCtx.fill();
+  gameCtx.beginPath();gameCtx.arc(G.cx,G.cy,6*s,0,Math.PI*2);gameCtx.fill();
   // Cast cooldown arc
   if(G.castTimer>0){const pct=1-(G.castTimer/G.castCooldown);
     gameCtx.strokeStyle='rgba(110,231,255,0.25)';gameCtx.lineWidth=2;
-    gameCtx.beginPath();gameCtx.arc(G.cx,G.cy,27,-Math.PI/2,-Math.PI/2+pct*Math.PI*2);gameCtx.stroke();}
+    gameCtx.beginPath();gameCtx.arc(G.cx,G.cy,27*s,-Math.PI/2,-Math.PI/2+pct*Math.PI*2);gameCtx.stroke();}
+  // Shield bubble
+  if(hasPerk('shield')&&shieldState.charges>0){
+    gameCtx.strokeStyle='rgba(68,170,255,0.4)';gameCtx.lineWidth=2;
+    gameCtx.beginPath();gameCtx.arc(G.cx,G.cy,30*s,0,Math.PI*2);gameCtx.stroke();
+    if(shieldState.charges>1){gameCtx.beginPath();gameCtx.arc(G.cx,G.cy,33*s,0,Math.PI*2);gameCtx.stroke();}
+  }
+  // Momentum glow
+  if(momentumState.active){
+    const mg=gameCtx.createRadialGradient(G.cx,G.cy,0,G.cx,G.cy,25*s);
+    mg.addColorStop(0,'rgba(255,170,51,0.2)');mg.addColorStop(1,'transparent');
+    gameCtx.fillStyle=mg;gameCtx.fillRect(G.cx-30*s,G.cy-30*s,60*s,60*s);
+  }
   // Enemies
   for(const e of enemies){
     if(e.deathTimer>=0){const t=1-(e.deathTimer/0.3);
@@ -494,6 +747,12 @@ function drawGame(dt){
     // Stun ring
     if(e.stunTimer>0){gameCtx.strokeStyle='rgba(110,231,255,0.6)';gameCtx.lineWidth=2;
       gameCtx.beginPath();gameCtx.arc(e.x,e.y,e.radius+3,0,Math.PI*2);gameCtx.stroke();}
+    // Burn glow
+    if(e.burnTimer>0){gameCtx.strokeStyle='rgba(255,100,0,0.5)';gameCtx.lineWidth=2;
+      gameCtx.beginPath();gameCtx.arc(e.x,e.y,e.radius+2,0,Math.PI*2);gameCtx.stroke();}
+    // Frost tint
+    if(e.frostTimer>0){gameCtx.strokeStyle='rgba(100,200,255,0.5)';gameCtx.lineWidth=2;
+      gameCtx.beginPath();gameCtx.arc(e.x,e.y,e.radius+2,0,Math.PI*2);gameCtx.stroke();}
     // Shield
     if(e.shield){gameCtx.strokeStyle='rgba(51,170,255,0.7)';gameCtx.lineWidth=2.5;gameCtx.setLineDash([3,3]);
       gameCtx.beginPath();gameCtx.arc(e.x,e.y,e.radius+5,0,Math.PI*2);gameCtx.stroke();gameCtx.setLineDash([]);}
@@ -542,23 +801,65 @@ function update(dt){
   if(G.paused||G.gameOver)return;
   G.waveTimer+=dt;
   if(G.waveTimer>=G.waveDuration){G.waveTimer=0;G.wave++;
-    G.spawnRate=Math.max(0.5,BASE.spawnRate+getLegacyBonuses().spawnDelay-G.wave*0.05);announceWave(G.wave);}
+    G.spawnRate=Math.max(0.3,BASE.spawnRate+getLegacyBonuses().spawnDelay-G.wave*0.05-Math.max(0,(G.wave-15)*0.03));announceWave(G.wave);
+    if((G.wave-1)%PERK_MILESTONE_INTERVAL===0&&(G.wave-1)>0)pendingTimeouts.push(setTimeout(()=>showPerkPick(),1200));}
   G.spawnTimer+=dt;
   if(G.spawnTimer>=G.spawnRate){G.spawnTimer-=G.spawnRate;
     const type=getSpawnType();if(type==='swarm')spawnSwarm();else spawnEnemy(type);}
   if(G.castTimer>0)G.castTimer-=dt;
-  if(G.castTimer<=0&&castChainLightning(G.cx,G.cy))G.castTimer=G.castCooldown;
+  if(G.castTimer<=0&&castChainLightning(G.cx,G.cy)){
+    let cd=G.castCooldown;
+    if(momentumState.active)cd*=(1-momentumState.speedBoost);
+    if(hasPerk('bloodlust')){const d=perkData('bloodlust');if(d.spdPer>0)cd*=Math.max(0.3,1-G.recentKills.length*d.spdPer);}
+    G.castTimer=cd;
+  }
   for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];
     if(e.deathTimer>=0){e.deathTimer-=dt;if(e.deathTimer<=0)enemies.splice(i,1);continue;}
     if(e.hitFlash>0)e.hitFlash-=dt;
+    // Burn DoT
+    if(e.burnTimer>0){
+      e.burnTimer-=dt;e.burnTick-=dt;
+      if(e.burnTick<=0){
+        e.burnTick=0.5;
+        const bd=perkData('burn');
+        const bdmg=Math.ceil(G.baseDamage*(bd?bd.tickPct:0.2));
+        e.hp-=bdmg;
+        spawnFloatingText(e.x+(Math.random()-0.5)*10,e.y-e.radius-4,''+bdmg,'#ff6622',9);
+        if(e.hp<=0){killEnemy(e);continue;}
+      }
+    }
     if(e.stunTimer>0){e.stunTimer-=dt;continue;}
-    e.x+=e.vx*dt;e.y+=e.vy*dt;
+    if(e.stunCount>0)e.stunCount=Math.max(0,e.stunCount-dt*2);
+    // Frost slow
+    if(e.frostTimer>0){e.frostTimer-=dt;}
+    const fd=perkData('frost');
+    const spdMult=e.frostTimer>0?1-(fd?fd.slow:0.4):1.0;
+    e.x+=e.vx*spdMult*dt;e.y+=e.vy*spdMult*dt;
     const dx=e.x-G.cx,dy=e.y-G.cy,dist=Math.sqrt(dx*dx+dy*dy);
-    if(dist<25){G.mageHP--;enemies.splice(i,1);screenShake('heavy');screenFlash('crit-flash');
+    if(dist<25*G.scale){
+      // Shield absorb check
+      if(hasPerk('shield')&&shieldState.charges>0){
+        shieldState.charges--;shieldState.rechargeTimer=perkData('shield').rechargeTime;
+        enemies.splice(i,1);screenShake('light');
+        createShockwave(G.cx,G.cy,35,'#44aaff');
+        spawnFloatingText(G.cx,G.cy-30,'BLOCKED!','#44aaff',14);
+        continue;
+      }
+      G.mageHP--;enemies.splice(i,1);screenShake('heavy');screenFlash('crit-flash');
       createShockwave(G.cx,G.cy,40,'#ff4466');updateHPBar();
       if(G.mageHP<=0){gameOverScreen();return;}}}
   if(Math.random()<0.3)spawnMageRingParticle();
   mageChargeVisual=Math.max(0,mageChargeVisual-dt*3);
+  // Shield recharge
+  if(hasPerk('shield')&&shieldState.charges<shieldState.maxCharges){
+    shieldState.rechargeTimer-=dt;
+    if(shieldState.rechargeTimer<=0){shieldState.charges++;shieldState.rechargeTimer=perkData('shield').rechargeTime;}
+  }
+  // Momentum timer
+  if(momentumState.active){
+    momentumState.timer-=dt;
+    if(momentumState.timer<=0)momentumState.active=false;
+  }
   const now=performance.now();
   G.recentKills=G.recentKills.filter(t=>now-t<5000);
   G.dps=G.recentKills.length>0?(G.recentKills.length/5).toFixed(1):'0';
@@ -645,6 +946,7 @@ function restartGame(){
   G.wave=1;G.waveTimer=0;G.spawnTimer=0;G.castTimer=0;
   G.kills=0;G.totalKills=0;G.bestChain=0;G.recentKills=[];G.dps=0;
   for(const u of Object.values(upgrades))u.lvl=0;
+  resetPerks();
   applyRunStart();
   clearEntities();
   lastTime=performance.now();
@@ -699,6 +1001,7 @@ function closeAllOverlays(){
   document.getElementById('game-over-overlay').classList.remove('show');
   document.getElementById('modal-overlay').classList.remove('open');
   document.getElementById('settings-overlay').classList.remove('open');
+  document.getElementById('perk-overlay').classList.remove('show');
 }
 function fullReset(){
   clearAllPending();
@@ -708,6 +1011,7 @@ function fullReset(){
   G.wave=1;G.waveTimer=0;G.spawnTimer=0;G.castTimer=0;
   G.gameOver=false;G.paused=false;
   for(const u of Object.values(upgrades))u.lvl=0;
+  resetPerks();
   applyRunStart();
   clearEntities();
   lastTime=performance.now();
