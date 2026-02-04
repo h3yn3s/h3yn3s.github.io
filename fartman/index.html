@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Donald Dump</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @font-face {
+            font-family: 'GameFont';
+            src: local('Impact'), local('Arial Black');
+        }
+
+        body {
+            font-family: 'GameFont', Impact, 'Arial Black', sans-serif;
+            background: #5c5a3d;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 420px;
+            min-height: 100vh;
+            background: linear-gradient(to bottom, #6b6945 0%, #5c5a3d 30%, #4a4832 100%);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Background city silhouette */
+        .background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            opacity: 0.3;
+            background-image:
+                repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(0,0,0,0.1) 20px, rgba(0,0,0,0.1) 21px),
+                repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(0,0,0,0.1) 20px, rgba(0,0,0,0.1) 21px);
+            pointer-events: none;
+        }
+
+        /* Score counter */
+        .score-counter {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(139, 119, 42, 0.9);
+            border-radius: 25px;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 10;
+        }
+
+        .poop-icon {
+            font-size: 24px;
+        }
+
+        .score-value {
+            color: #ff6b35;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        /* Character section */
+        .character-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 20px 20px;
+            position: relative;
+        }
+
+        .stink-cloud {
+            position: absolute;
+            top: 60px;
+            font-size: 80px;
+            opacity: 0.6;
+            color: #7a7a52;
+        }
+
+        .character-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            width: 100%;
+        }
+
+        .arrow-btn {
+            width: 50px;
+            height: 50px;
+            background: #c9a227;
+            border: none;
+            cursor: pointer;
+            clip-path: polygon(100% 50%, 0% 0%, 0% 100%);
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .arrow-btn.left {
+            clip-path: polygon(0% 50%, 100% 0%, 100% 100%);
+        }
+
+        .arrow-btn:hover {
+            transform: scale(1.1);
+            background: #ddb82a;
+        }
+
+        .arrow-btn:active {
+            transform: scale(0.95);
+        }
+
+        .character-display {
+            width: 200px;
+            height: 280px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .character-image {
+            width: 180px;
+            height: 220px;
+            background: rgba(100, 100, 70, 0.5);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 100px;
+            margin-bottom: 15px;
+        }
+
+        .character-name {
+            color: #fff;
+            font-size: 32px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        /* Power-ups section */
+        .powerups-section {
+            background: rgba(60, 58, 40, 0.8);
+            margin: 0 15px;
+            border-radius: 15px;
+            padding: 15px;
+        }
+
+        .section-title {
+            color: #a0a080;
+            font-size: 14px;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        .powerups-grid {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .powerup-slot {
+            width: 90px;
+            height: 90px;
+            background: rgba(80, 78, 55, 0.6);
+            border: 2px solid rgba(120, 118, 90, 0.4);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .powerup-slot:hover {
+            transform: scale(1.05);
+            border-color: rgba(180, 150, 50, 0.6);
+        }
+
+        .powerup-slot.selected {
+            border-color: #c9a227;
+            box-shadow: 0 0 15px rgba(201, 162, 39, 0.4);
+        }
+
+        /* Difficulty section */
+        .difficulty-section {
+            background: rgba(60, 58, 40, 0.8);
+            margin: 15px;
+            border-radius: 15px;
+            padding: 15px;
+        }
+
+        .difficulty-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .difficulty-label {
+            color: #fff;
+            font-size: 22px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+        }
+
+        .slider-container {
+            position: relative;
+            height: 30px;
+        }
+
+        .slider-track {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 20px;
+            transform: translateY(-50%);
+            background: linear-gradient(to right, #5a5830, #7a6520, #8b6914);
+            border-radius: 10px;
+            border: 3px solid #3d3a25;
+        }
+
+        .difficulty-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 30px;
+            background: transparent;
+            cursor: pointer;
+            position: relative;
+            z-index: 2;
+        }
+
+        .difficulty-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 40px;
+            height: 40px;
+            background: #8b6914;
+            border-radius: 50%;
+            border: 4px solid #5a4510;
+            cursor: pointer;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .difficulty-slider::-moz-range-thumb {
+            width: 40px;
+            height: 40px;
+            background: #8b6914;
+            border-radius: 50%;
+            border: 4px solid #5a4510;
+            cursor: pointer;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+        }
+
+        /* Start button */
+        .start-btn {
+            margin: 15px;
+            margin-top: 5px;
+            padding: 20px;
+            background: linear-gradient(to bottom, #e85a2c, #c94420);
+            border: none;
+            border-radius: 15px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 28px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #8b2a10, 0 8px 15px rgba(0,0,0,0.3);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 0 #8b2a10, 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        .start-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #8b2a10, 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        /* Decorative elements */
+        .toilet-paper {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 50px;
+            opacity: 0.4;
+            transform: rotate(15deg);
+        }
+
+        /* Safe area padding for mobile */
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+            .game-container {
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+        }
+
+        /* Tablet and desktop adjustments */
+        @media (min-width: 768px) {
+            .game-container {
+                min-height: 800px;
+                border-radius: 30px;
+                margin: 20px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="background"></div>
+
+        <!-- Score Counter -->
+        <div class="score-counter">
+            <span class="poop-icon">💩</span>
+            <span class="score-value">0</span>
+        </div>
+
+        <!-- Decorative toilet paper -->
+        <div class="toilet-paper">🧻</div>
+
+        <!-- Character Selection -->
+        <div class="character-section">
+            <div class="stink-cloud">💨</div>
+            <div class="character-selector">
+                <button class="arrow-btn left" aria-label="Previous character"></button>
+                <div class="character-display">
+                    <div class="character-image">🤵</div>
+                    <h1 class="character-name">Donald Dump</h1>
+                </div>
+                <button class="arrow-btn right" aria-label="Next character"></button>
+            </div>
+        </div>
+
+        <!-- Power-ups -->
+        <div class="powerups-section">
+            <div class="section-title">Power-Ups</div>
+            <div class="powerups-grid">
+                <div class="powerup-slot selected" data-powerup="beans">🫘</div>
+                <div class="powerup-slot" data-powerup="plunger">🪠</div>
+                <div class="powerup-slot" data-powerup="taco">🌮</div>
+            </div>
+        </div>
+
+        <!-- Difficulty -->
+        <div class="difficulty-section">
+            <div class="difficulty-header">
+                <span class="section-title">Difficulty</span>
+                <span class="difficulty-label" id="difficultyLabel">SHARTCORE</span>
+            </div>
+            <div class="slider-container">
+                <div class="slider-track"></div>
+                <input type="range" class="difficulty-slider" min="0" max="3" value="3" id="difficultySlider">
+            </div>
+        </div>
+
+        <!-- Start Button -->
+        <button class="start-btn" id="startBtn">Let It Rip!</button>
+    </div>
+
+    <script>
+        // Difficulty labels
+        const difficulties = ['EASY', 'MEDIUM', 'HARD', 'SHARTCORE'];
+        const slider = document.getElementById('difficultySlider');
+        const label = document.getElementById('difficultyLabel');
+
+        slider.addEventListener('input', (e) => {
+            label.textContent = difficulties[e.target.value];
+        });
+
+        // Power-up selection
+        const powerups = document.querySelectorAll('.powerup-slot');
+        powerups.forEach(slot => {
+            slot.addEventListener('click', () => {
+                slot.classList.toggle('selected');
+            });
+        });
+
+        // Start button
+        document.getElementById('startBtn').addEventListener('click', () => {
+            const selectedPowerups = [...document.querySelectorAll('.powerup-slot.selected')]
+                .map(el => el.dataset.powerup);
+            const difficulty = difficulties[slider.value];
+
+            console.log('Starting game with:', { difficulty, powerups: selectedPowerups });
+            alert(`Let it rip! Difficulty: ${difficulty}`);
+        });
+
+        // Character arrows (placeholder)
+        document.querySelectorAll('.arrow-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                console.log('Character selection arrow clicked');
+            });
+        });
+    </script>
+</body>
+</html>
