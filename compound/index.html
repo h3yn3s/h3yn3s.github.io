@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Real-Time Compound Interest</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-dvh p-6 flex justify-center">
+  <div class="w-full max-w-4xl space-y-4">
+
+    <div id="jumpBanner" class="hidden bg-blue-900 border border-blue-700 rounded-lg p-3 text-center text-sm font-semibold animate-pulse">wait for it...</div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+      <h1 class="text-xl font-bold">Real-Time Compound Interest</h1>
+      <p class="text-sm text-gray-400 mt-1">Watch your balance grow in real time with continuous compounding. The chart shows cumulative interest earned so the exponential curve is visible even at micro scale.</p>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+      <div>
+        <label for="principal" class="block text-xs text-gray-400 mb-1">Initial Capital (&euro;)</label>
+        <input id="principal" type="number" min="0" step="0.01" value="1000" class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
+      </div>
+      <div>
+        <label for="rate" class="block text-xs text-gray-400 mb-1">Annual Rate (%)</label>
+        <input id="rate" type="number" step="0.01" value="5" class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
+      </div>
+      <div class="sm:col-span-2 flex gap-2">
+        <button id="startBtn" class="bg-green-800 hover:bg-green-700 border border-green-600 rounded px-4 py-2 text-sm font-semibold">Start</button>
+        <button id="pauseBtn" class="bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded px-4 py-2 text-sm font-semibold">Pause</button>
+        <button id="resetBtn" class="bg-red-900 hover:bg-red-800 border border-red-700 rounded px-4 py-2 text-sm font-semibold">Reset</button>
+        <select id="jumpAmount" class="bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+          <option value="3600">1 hour</option>
+          <option value="86400" selected>1 day</option>
+          <option value="604800">1 week</option>
+          <option value="2592000">1 month</option>
+          <option value="31536000">1 year</option>
+          <option value="315360000">10 years</option>
+        </select>
+        <button id="jumpBtn" class="bg-blue-800 hover:bg-blue-700 border border-blue-600 rounded px-4 py-2 text-sm font-semibold">Jump ahead</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div class="md:col-span-2 bg-gray-900 border border-gray-800 rounded-lg p-4 space-y-3">
+        <div id="amount" class="text-3xl font-extrabold tabular-nums">&euro; 1.000,000000</div>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="bg-gray-950 border border-gray-800 rounded p-3">
+            <div class="text-xs text-gray-400">Interest Earned</div>
+            <div id="earned" class="font-bold tabular-nums">&euro; 0,000000</div>
+          </div>
+          <div class="bg-gray-950 border border-gray-800 rounded p-3">
+            <div class="text-xs text-gray-400">Earnings / sec</div>
+            <div id="persec" class="font-bold tabular-nums">&euro; 0,000000</div>
+          </div>
+          <div class="bg-gray-950 border border-gray-800 rounded p-3">
+            <div class="text-xs text-gray-400">Elapsed (real)</div>
+            <div id="elapsed" class="font-bold tabular-nums">0s</div>
+          </div>
+          <div class="bg-gray-950 border border-gray-800 rounded p-3">
+            <div class="text-xs text-gray-400">Simulated Years</div>
+            <div id="years" class="font-bold tabular-nums">0.000000</div>
+          </div>
+        </div>
+      </div>
+      <div class="md:col-span-3 bg-gray-900 border border-gray-800 rounded-lg p-4">
+        <canvas id="chart" width="800" height="240" class="w-full h-60 bg-gray-950 border border-gray-800 rounded" aria-label="interest earned chart"></canvas>
+        <p class="text-xs text-gray-500 mt-2 text-center">Cumulative interest earned</p>
+      </div>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+      <div>
+        <label for="targetEarnings" class="block text-xs text-gray-400 mb-1">How long until you earned (&euro;)</label>
+        <input id="targetEarnings" type="number" min="0" step="1" value="100" class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
+      </div>
+      <div class="sm:col-span-2">
+        <div class="text-xs text-gray-400 mb-1">Answer</div>
+        <div id="targetAnswer" class="font-bold tabular-nums text-sm py-2">—</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const S_PER_YEAR = 365 * 24 * 3600;
+    const fmt = (d) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: d, maximumFractionDigits: d });
+
+    let startTime = 0, pausedAt = 0, accPaused = 0, timer = null, points = [];
+
+    const TICK = 200;
+
+    function getInputs() {
+      const P = parseFloat(document.getElementById('principal').value || '0');
+      const rPct = parseFloat(document.getElementById('rate').value || '0');
+      return { P, r: rPct / 100 };
+    }
+
+    function autoDecimals(perSec) {
+      if (perSec <= 0) return 2;
+      // show enough decimals so the per-tick movement is visible
+      const perTick = perSec * (TICK / 1000);
+      const d = Math.ceil(-Math.log10(perTick)) + 1;
+      return Math.max(2, Math.min(d, 10));
+    }
+
+    function yearsElapsed() {
+      if (!startTime) return 0;
+      return ((performance.now() - startTime - accPaused) / 1000) / S_PER_YEAR;
+    }
+
+    function updateUI() {
+      const { P, r } = getInputs();
+      const t = yearsElapsed();
+      const A = P * Math.exp(r * t);
+      const earned = A - P;
+      const perSec = (r * A) / S_PER_YEAR;
+      const decimals = autoDecimals(perSec);
+
+      const f = fmt(decimals);
+      document.getElementById('amount').textContent = f.format(A);
+      document.getElementById('earned').textContent = f.format(earned);
+      document.getElementById('persec').textContent = f.format(perSec);
+
+      const rtSec = startTime ? ((performance.now() - startTime - accPaused) / 1000) | 0 : 0;
+      document.getElementById('elapsed').textContent = rtSec + 's';
+      document.getElementById('years').textContent = t.toFixed(6);
+
+      pushPoint(earned);
+      drawChart();
+    }
+
+    // Chart — plots cumulative interest earned
+    const canvas = document.getElementById('chart');
+    const ctx = canvas.getContext('2d');
+
+    function pushPoint(value) {
+      const now = Date.now();
+      points.push({ time: now, value });
+    }
+
+    function drawChart() {
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+      if (points.length < 2) return;
+
+      const padL = 60, padR = 12, padT = 10, padB = 22;
+      const innerW = w - padL - padR;
+      const innerH = h - padT - padB;
+
+      let minV = Infinity, maxV = -Infinity;
+      for (const p of points) {
+        if (p.value < minV) minV = p.value;
+        if (p.value > maxV) maxV = p.value;
+      }
+      const v0 = minV === maxV ? minV - 0.000001 : minV;
+      const v1 = minV === maxV ? maxV + 0.000001 : maxV;
+
+      const t0 = points[0].time;
+      const t1 = points[points.length - 1].time;
+
+      // grid
+      ctx.globalAlpha = 0.15;
+      ctx.strokeStyle = '#6b7280';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 5; i++) {
+        const y = padT + (i / 5) * innerH;
+        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
+      // line
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      points.forEach((p, i) => {
+        const x = padL + ((p.time - t0) / (t1 - t0 || 1)) * innerW;
+        const y = padT + (1 - (p.value - v0) / (v1 - v0 || 1)) * innerH;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // y-axis labels
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '11px ui-monospace, monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(formatY(v0), padL - 6, h - padB);
+      ctx.fillText(formatY(v1), padL - 6, padT + 12);
+
+      // x-axis
+      ctx.textAlign = 'center';
+      const elapsedSec = ((t1 - t0) / 1000) | 0;
+      ctx.fillText('0s', padL, h - 4);
+      ctx.fillText(elapsedSec + 's', w - padR, h - 4);
+    }
+
+    function formatY(n) {
+      if (Math.abs(n) < 0.01) return n.toFixed(6);
+      if (Math.abs(n) < 1) return n.toFixed(4);
+      return new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 2 }).format(n);
+    }
+
+    // Controls
+    const startBtn = document.getElementById('startBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    function start() {
+      if (timer) return;
+      if (!startTime) startTime = performance.now();
+      if (pausedAt) { accPaused += performance.now() - pausedAt; pausedAt = 0; }
+      timer = setInterval(updateUI, TICK);
+      startBtn.disabled = true;
+      pauseBtn.disabled = false;
+      updateUI();
+    }
+
+    function pause() {
+      if (!timer) return;
+      clearInterval(timer); timer = null;
+      pausedAt = performance.now();
+      startBtn.disabled = false;
+      pauseBtn.disabled = true;
+    }
+
+    function reset() {
+      clearInterval(timer); timer = null;
+      startTime = 0; pausedAt = 0; accPaused = 0; points = [];
+      startBtn.disabled = false;
+      pauseBtn.disabled = true;
+      updateUI();
+    }
+
+    let jumping = false;
+
+    function jump() {
+      if (jumping) return;
+      const jumpSecs = parseInt(document.getElementById('jumpAmount').value, 10);
+      if (!startTime) startTime = performance.now();
+
+      jumping = true;
+      const wasRunning = !!timer;
+      if (timer) { clearInterval(timer); timer = null; }
+
+      document.getElementById('jumpBanner').classList.remove('hidden');
+      document.getElementById('jumpBtn').disabled = true;
+
+      const STEPS = 300;
+      const shiftPerStep = (jumpSecs * 1000) / STEPS;
+      let step = 0;
+
+      const fastTimer = setInterval(() => {
+        startTime -= shiftPerStep;
+        step++;
+        updateUI();
+        if (step >= STEPS) {
+          clearInterval(fastTimer);
+          document.getElementById('jumpBanner').classList.add('hidden');
+          document.getElementById('jumpBtn').disabled = false;
+          jumping = false;
+          if (wasRunning) start();
+        }
+      }, 5);
+    }
+
+    startBtn.addEventListener('click', start);
+    pauseBtn.addEventListener('click', pause);
+    resetBtn.addEventListener('click', reset);
+    document.getElementById('jumpBtn').addEventListener('click', jump);
+
+    ['principal', 'rate'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => { if (!timer) updateUI(); updateTarget(); });
+    });
+
+    function updateTarget() {
+      const { P, r } = getInputs();
+      const target = parseFloat(document.getElementById('targetEarnings').value || '0');
+      const el = document.getElementById('targetAnswer');
+      if (target <= 0 || r <= 0 || P <= 0) { el.textContent = '—'; return; }
+      // A = P * e^(r*t), earned = A - P = target => t = ln((P + target) / P) / r
+      const tYears = Math.log((P + target) / P) / r;
+      const days = tYears * 365;
+      const hours = tYears * 365 * 24;
+      const minutes = hours * 60;
+      const seconds = minutes * 60;
+      let text;
+      if (tYears >= 1) text = tYears.toFixed(2) + ' years (' + Math.round(days) + ' days)';
+      else if (days >= 1) text = days.toFixed(1) + ' days (' + Math.round(hours) + ' hours)';
+      else if (hours >= 1) text = hours.toFixed(1) + ' hours (' + Math.round(minutes) + ' min)';
+      else if (minutes >= 1) text = minutes.toFixed(1) + ' minutes';
+      else text = seconds.toFixed(1) + ' seconds';
+      el.textContent = text;
+    }
+
+    document.getElementById('targetEarnings').addEventListener('input', updateTarget);
+
+    updateUI();
+    updateTarget();
+  </script>
+</body>
+</html>

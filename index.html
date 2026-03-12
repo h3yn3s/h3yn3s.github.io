@@ -8,15 +8,29 @@
   </head>
   <body class="m-8">
     <h1 class="text-2xl font-bold mb-6">h3yn3s</h1>
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-w-3xl">
-      <a href="./blumen" class="block border rounded p-4 hover:bg-gray-50">blumen</a>
-      <a href="./chain-lightning" class="block border rounded p-4 hover:bg-gray-50">chain-lightning</a>
-      <a href="./codes" class="block border rounded p-4 hover:bg-gray-50">codes</a>
-      <a href="./factorio" class="block border rounded p-4 hover:bg-gray-50">Factorio Space Age Countdown</a>
-      <a href="./fartman" class="block border rounded p-4 hover:bg-gray-50">fartman</a>
-      <a href="./int" class="block border rounded p-4 hover:bg-gray-50">int</a>
-      <a href="./Leeman" class="block border rounded p-4 hover:bg-gray-50">Leeman</a>
-      <a href="./progressbars" class="block border rounded p-4 hover:bg-gray-50">progressbars</a>
-    </div>
+    <div id="cards" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-w-3xl"></div>
+    <script>
+      fetch("./cards.json")
+        .then((r) => r.json())
+        .then((cards) => {
+          const container = document.getElementById("cards");
+          cards.forEach((card) => {
+            const a = document.createElement("a");
+            a.href = card.link;
+            a.className = "flex items-center border rounded p-4 hover:bg-gray-50";
+            if (card.svg) {
+              const icon = document.createElement("span");
+              icon.className = "shrink-0";
+              icon.innerHTML = card.svg;
+              a.appendChild(icon);
+            }
+            const title = document.createElement("span");
+            title.className = "flex-1 text-center";
+            title.textContent = card.title;
+            a.appendChild(title);
+            container.appendChild(a);
+          });
+        });
+    </script>
   </body>
 </html>
