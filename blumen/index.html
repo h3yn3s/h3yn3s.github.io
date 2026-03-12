@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flower Picker!</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { overflow: hidden; background: #87CEEB; touch-action: none; }
+  canvas { display: block; }
+  #score {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    font-family: 'Comic Sans MS', cursive; font-size: 48px;
+    color: #fff; text-shadow: 3px 3px 0 #e91e63;
+    pointer-events: none; z-index: 10;
+  }
+  #start-screen {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; background: #87CEEB; z-index: 20;
+    cursor: pointer;
+  }
+  #start-screen h1 {
+    font-family: 'Comic Sans MS', cursive; font-size: 64px;
+    color: #e91e63; text-shadow: 3px 3px 0 #fff; margin-bottom: 20px;
+  }
+  #start-screen p {
+    font-family: 'Comic Sans MS', cursive; font-size: 32px; color: #fff;
+  }
+  .touch-zone {
+    position: fixed; bottom: 0; width: 50%; height: 40%; z-index: 5; opacity: 0;
+  }
+  #touch-left { left: 0; }
+  #touch-right { right: 0; }
+</style>
+</head>
+<body>
+<div id="start-screen">
+  <h1>Flower Picker!</h1>
+  <p>Tap or press any key to play!</p>
+</div>
+<div id="score">0</div>
+<canvas id="game"></canvas>
+<div id="touch-left" class="touch-zone"></div>
+<div id="touch-right" class="touch-zone"></div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const startScreen = document.getElementById('start-screen');
+
+let W, H, ground;
+function resize() {
+  W = canvas.width = innerWidth;
+  H = canvas.height = innerHeight;
+  ground = H * 0.78;
+}
+resize();
+addEventListener('resize', resize);
+
+// --- state ---
+let score = 0;
+let started = false;
+const keys = { left: false, right: false, jump: false };
+const flowers = [];
+const particles = [];
+const clouds = [];
+const grassTufts = [];
+const butterflies = [];
+const frogs = [];
+
+// --- river ---
+let riverX = -9999, riverW = 0;
+function initRiver() {
+  riverW = Math.max(180, W * 0.16);
+  riverX = W * 0.45 + Math.random() * W * 0.1; // slightly off-center
+}
+function isInRiver(x, margin) {
+  margin = margin || 0;
+  return x > riverX - riverW / 2 - margin && x < riverX + riverW / 2 + margin;
+}
+
+// --- dragon ---
+const dragon = {
+  active: false, timer: 25 + Math.random() * 30,
+  x: 0, y: 0, vx: 0, scale: 1,
+  wingPhase: 0, bobPhase: 0, baseY: 0,
+  color: '#7e57c2' // default, randomized on spawn
+};
+
+const DRAGON_COLORS = [
+  { body: '#7e57c2', belly: '#b39ddb', wing: '#9575cd' },  // purple
+  { body: '#ef5350', belly: '#ef9a9a', wing: '#e57373' },  // red
+  { body: '#42a5f5', belly: '#90caf9', wing: '#64b5f6' },  // blue
+  { body: '#66bb6a', belly: '#a5d6a7', wing: '#81c784' },  // green
+  { body: '#ffa726', belly: '#ffcc80', wing: '#ffb74d' },  // orange
+];
+
+function spawnDragon() {
+  const fromLeft = Math.random() > 0.5;
+  const palette = DRAGON_COLORS[Math.floor(Math.random() * DRAGON_COLORS.length)];
+  dragon.active = true;
+  dragon.x = fromLeft ? -250 : W + 250;
+  dragon.baseY = 60 + Math.random() * (ground * 0.3);
+  dragon.y = dragon.baseY;
+  dragon.vx = (fromLeft ? 1 : -1) * (1.2 + Math.random() * 0.8);
+  dragon.scale = 0.8 + Math.random() * 0.4;
+  dragon.wingPhase = 0;
+  dragon.bobPhase = Math.random() * Math.PI * 2;
+  dragon.palette = palette;
+}
+
+function drawDragon() {
+  if (!dragon.active) return;
+  const d = dragon;
+  const s = d.scale * 2.5;
+  const flip = d.vx > 0 ? 1 : -1;
+  const wingAng = Math.sin(d.wingPhase) * 0.6;
+
+  ctx.save();
+  ctx.translate(d.x, d.y);
+  ctx.scale(flip * s, s);
+
+  // --- tail (behind body) ---
+  ctx.strokeStyle = d.palette.body;
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  const tailWag = Math.sin(d.bobPhase * 2) * 8;
+  ctx.beginPath();
+  ctx.moveTo(-50, 5);
+  ctx.quadraticCurveTo(-75, tailWag, -95, tailWag + 5);
+  ctx.quadraticCurveTo(-110, tailWag + 10, -115, tailWag);
+  ctx.stroke();
+  // tail spade
+  ctx.fillStyle = d.palette.body;
+  ctx.beginPath();
+  ctx.moveTo(-115, tailWag);
+  ctx.lineTo(-125, tailWag - 8);
+  ctx.lineTo(-120, tailWag + 2);
+  ctx.lineTo(-125, tailWag + 12);
+  ctx.closePath();
+  ctx.fill();
+
+  // --- wings (behind body) ---
+  ctx.save();
+  ctx.translate(0, -20);
+
+  // wing membrane
+  ctx.fillStyle = d.palette.wing;
+  ctx.globalAlpha = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(-5, 0);
+  const wy = -35 * Math.cos(wingAng);
+  const wx = -10;
+  ctx.quadraticCurveTo(wx - 20, wy - 15, wx - 50, wy);
+  ctx.quadraticCurveTo(wx - 35, wy + 15, wx - 15, 8);
+  ctx.closePath();
+  ctx.fill();
+
+  // wing bone
+  ctx.globalAlpha = 0.8;
+  ctx.strokeStyle = d.palette.body;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-5, 0);
+  ctx.quadraticCurveTo(wx - 10, wy - 5, wx - 50, wy);
+  ctx.stroke();
+  // finger bones
+  ctx.beginPath();
+  ctx.moveTo(wx - 30, wy - 2);
+  ctx.lineTo(wx - 40, wy + 10);
+  ctx.moveTo(wx - 20, wy);
+  ctx.lineTo(wx - 28, wy + 12);
+  ctx.stroke();
+
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // --- body ---
+  ctx.fillStyle = d.palette.body;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 45, 22, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // belly
+  ctx.fillStyle = d.palette.belly;
+  ctx.beginPath();
+  ctx.ellipse(5, 6, 32, 13, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // belly stripes
+  ctx.strokeStyle = d.palette.wing;
+  ctx.lineWidth = 1.5;
+  ctx.globalAlpha = 0.4;
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath();
+    ctx.moveTo(5 + i * 10, 0);
+    ctx.lineTo(5 + i * 10, 14);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // --- back legs ---
+  ctx.fillStyle = d.palette.body;
+  ctx.beginPath();
+  ctx.ellipse(-30, 18, 10, 7, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- front legs ---
+  const legDangle = Math.sin(d.wingPhase * 0.5) * 3;
+  ctx.fillStyle = d.palette.body;
+  ctx.beginPath();
+  ctx.ellipse(20, 18 + legDangle, 8, 6, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- neck and head ---
+  // neck
+  ctx.fillStyle = d.palette.body;
+  ctx.beginPath();
+  ctx.moveTo(35, -8);
+  ctx.quadraticCurveTo(50, -20, 58, -28);
+  ctx.quadraticCurveTo(55, -15, 40, -2);
+  ctx.fill();
+
+  // head
+  ctx.fillStyle = d.palette.body;
+  ctx.beginPath();
+  ctx.ellipse(62, -32, 16, 13, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // snout
+  ctx.beginPath();
+  ctx.ellipse(74, -28, 10, 8, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // nostril puffs
+  ctx.fillStyle = '#ffcc80';
+  ctx.globalAlpha = 0.5 + Math.sin(d.bobPhase * 3) * 0.3;
+  ctx.beginPath();
+  ctx.arc(82, -28, 3 + Math.sin(d.bobPhase * 3) * 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // jaw / smile
+  ctx.fillStyle = d.palette.belly;
+  ctx.beginPath();
+  ctx.ellipse(72, -24, 8, 5, 0.3, 0, Math.PI);
+  ctx.fill();
+
+  // cute smile line
+  ctx.strokeStyle = d.palette.body;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(74, -25, 6, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+
+  // eyes - big and cute
+  // eye white
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(60, -36, 7, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // iris
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.ellipse(61, -35, 4, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // pupil shine
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(63, -37, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // eyebrow - friendly
+  ctx.strokeStyle = d.palette.body;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(60, -40, 8, -0.8 * Math.PI, -0.3 * Math.PI);
+  ctx.stroke();
+
+  // little horns
+  ctx.fillStyle = '#ffcc80';
+  ctx.beginPath();
+  ctx.moveTo(54, -43);
+  ctx.lineTo(50, -55);
+  ctx.lineTo(57, -45);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(64, -43);
+  ctx.lineTo(62, -56);
+  ctx.lineTo(68, -45);
+  ctx.fill();
+
+  // ear frills
+  ctx.fillStyle = d.palette.wing;
+  ctx.globalAlpha = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(48, -35);
+  ctx.lineTo(40, -42);
+  ctx.lineTo(46, -30);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // back spines (along body)
+  ctx.fillStyle = d.palette.wing;
+  for (let i = 0; i < 6; i++) {
+    const sx = 25 - i * 12;
+    const sh = 6 + Math.sin(i + d.bobPhase) * 2;
+    ctx.beginPath();
+    ctx.moveTo(sx - 3, -20);
+    ctx.lineTo(sx, -20 - sh);
+    ctx.lineTo(sx + 3, -20);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+// --- colors ---
+const FLOWER_COLORS = ['#e91e63','#ff5722','#ff9800','#ffeb3b','#9c27b0','#2196f3','#4caf50'];
+const PETAL_SHAPES = [5, 6, 7, 8]; // petal counts
+
+// --- player ---
+const player = { x: 0, y: 0, w: 60, h: 80, vx: 0, vy: 0, dir: 1, frame: 0, bobTimer: 0, onGround: true };
+
+function initPlayer() {
+  player.x = W / 2;
+  player.y = ground;
+}
+
+// --- clouds ---
+function spawnClouds() {
+  clouds.length = 0;
+  for (let i = 0; i < 6; i++) {
+    clouds.push({
+      x: Math.random() * W * 1.5 - W * 0.25,
+      y: Math.random() * H * 0.3 + 20,
+      r: 30 + Math.random() * 40,
+      speed: 0.2 + Math.random() * 0.3
+    });
+  }
+}
+
+// --- grass ---
+function spawnGrass() {
+  grassTufts.length = 0;
+  for (let i = 0; i < 80; i++) {
+    grassTufts.push({
+      x: Math.random() * W,
+      h: 8 + Math.random() * 16,
+      lean: (Math.random() - 0.5) * 0.3
+    });
+  }
+}
+
+// --- flowers ---
+function spawnFlower() {
+  const color = FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)];
+  const petals = PETAL_SHAPES[Math.floor(Math.random() * PETAL_SHAPES.length)];
+  const stemH = 30 + Math.random() * 30;
+  let fx;
+  do { fx = 40 + Math.random() * (W - 80); } while (isInRiver(fx, 15));
+  flowers.push({
+    x: fx,
+    y: ground,
+    stemH,
+    r: 14 + Math.random() * 10,
+    color,
+    petals,
+    age: 0,
+    scale: 0
+  });
+}
+
+// --- butterflies ---
+const BUTTERFLY_COLORS = [
+  ['#e91e63','#f48fb1'], ['#ff9800','#ffe0b2'], ['#9c27b0','#ce93d8'],
+  ['#2196f3','#90caf9'], ['#ffeb3b','#fff9c4'], ['#4caf50','#a5d6a7']
+];
+
+function lightenColor(hex, amt) {
+  let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  r = Math.min(255, r + amt); g = Math.min(255, g + amt); b = Math.min(255, b + amt);
+  return '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
+}
+
+function spawnButterflyAt(x, y, color) {
+  const color2 = lightenColor(color, 80);
+  butterflies.push({
+    x,
+    y: y - 10,
+    baseY: ground * 0.2 + Math.random() * ground * 0.4,
+    vx: (Math.random() - 0.5) * 1.5,
+    wingPhase: Math.random() * Math.PI * 2,
+    wobblePhase: Math.random() * Math.PI * 2,
+    wanderTimer: 0,
+    size: 8 + Math.random() * 6,
+    color1: color,
+    color2,
+    age: 0,
+    rising: true
+  });
+}
+
+function drawButterfly(b) {
+  const wingFlap = Math.sin(b.wingPhase) * 0.8; // -0.8 to 0.8 wing angle
+  const s = b.size;
+
+  ctx.save();
+  ctx.translate(b.x, b.y);
+
+  // body
+  ctx.fillStyle = '#5d4037';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 2, s * 0.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // antennae
+  ctx.strokeStyle = '#5d4037';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, -s * 0.4);
+  ctx.quadraticCurveTo(-4, -s * 0.8, -6, -s * 0.9);
+  ctx.moveTo(0, -s * 0.4);
+  ctx.quadraticCurveTo(4, -s * 0.8, 6, -s * 0.9);
+  ctx.stroke();
+
+  // antenna tips
+  ctx.fillStyle = '#5d4037';
+  ctx.beginPath();
+  ctx.arc(-6, -s * 0.9, 1.5, 0, Math.PI * 2);
+  ctx.arc(6, -s * 0.9, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // left wings
+  ctx.save();
+  ctx.scale(wingFlap, 1);
+
+  // upper left wing
+  ctx.fillStyle = b.color1;
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.5, -s * 0.15, s * 0.6, s * 0.4, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // lower left wing
+  ctx.fillStyle = b.color2;
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.4, s * 0.2, s * 0.45, s * 0.3, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // wing dots
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.beginPath();
+  ctx.arc(-s * 0.5, -s * 0.15, s * 0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+
+  // right wings
+  ctx.save();
+  ctx.scale(-wingFlap, 1);
+
+  ctx.fillStyle = b.color1;
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.5, -s * 0.15, s * 0.6, s * 0.4, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = b.color2;
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.4, s * 0.2, s * 0.45, s * 0.3, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.beginPath();
+  ctx.arc(-s * 0.5, -s * 0.15, s * 0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+  ctx.restore();
+}
+
+// --- mole ---
+// states: 'hidden', 'rising', 'peeking', 'grabbing', 'sinking'
+const mole = {
+  x: 0, y: 0, show: 0, // show: 0 = underground, 1 = fully up
+  state: 'hidden', timer: 5, targetFlower: null,
+  holdingFlower: null, eyeDir: 0
+};
+
+function drawMole() {
+  if (mole.state === 'hidden') return;
+  const m = mole;
+  const peekH = 40 * m.show;
+
+  ctx.save();
+  ctx.translate(m.x, ground);
+
+  // clip so mole is hidden below ground
+  ctx.beginPath();
+  ctx.rect(-40, -80, 80, 80);
+  ctx.clip();
+
+  const bodyY = -peekH;
+
+  // dirt mound
+  ctx.fillStyle = '#795548';
+  ctx.beginPath();
+  ctx.ellipse(0, 2, 28, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#6d4c41';
+  ctx.beginPath();
+  ctx.ellipse(0, 4, 24, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // body
+  ctx.fillStyle = '#5d4037';
+  ctx.beginPath();
+  ctx.ellipse(0, bodyY + 16, 20, 22, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // belly
+  ctx.fillStyle = '#8d6e63';
+  ctx.beginPath();
+  ctx.ellipse(0, bodyY + 20, 13, 15, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // head
+  ctx.fillStyle = '#5d4037';
+  ctx.beginPath();
+  ctx.ellipse(0, bodyY, 16, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // snout
+  ctx.fillStyle = '#8d6e63';
+  ctx.beginPath();
+  ctx.ellipse(0, bodyY + 5, 10, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // nose
+  ctx.fillStyle = '#e91e63';
+  ctx.beginPath();
+  ctx.ellipse(0, bodyY + 1, 4, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // eyes - beady, looking at target
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(-7 + m.eyeDir * 1.5, bodyY - 4, 3, 0, Math.PI * 2);
+  ctx.arc(7 + m.eyeDir * 1.5, bodyY - 4, 3, 0, Math.PI * 2);
+  ctx.fill();
+  // eye shine
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(-6 + m.eyeDir, bodyY - 5, 1, 0, Math.PI * 2);
+  ctx.arc(8 + m.eyeDir, bodyY - 5, 1, 0, Math.PI * 2);
+  ctx.fill();
+
+  // little paws on mound edge
+  ctx.fillStyle = '#5d4037';
+  ctx.beginPath();
+  ctx.ellipse(-14, 0, 7, 4, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(14, 0, 7, 4, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  // claws
+  ctx.strokeStyle = '#4e342e';
+  ctx.lineWidth = 1.5;
+  for (const side of [-1, 1]) {
+    for (let c = -1; c <= 1; c++) {
+      ctx.beginPath();
+      ctx.moveTo(side * 14 + c * 3, -1);
+      ctx.lineTo(side * 14 + c * 4, -4);
+      ctx.stroke();
+    }
+  }
+
+  // held flower
+  if (m.holdingFlower && (m.state === 'grabbing' || m.state === 'sinking')) {
+    const hf = m.holdingFlower;
+    const fx = 0, fy = bodyY - 16;
+    // tiny stem
+    ctx.strokeStyle = '#4caf50';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(fx, fy + 8);
+    ctx.lineTo(fx, fy);
+    ctx.stroke();
+    // petals
+    ctx.fillStyle = hf.color;
+    for (let i = 0; i < 5; i++) {
+      const a = (Math.PI * 2 / 5) * i;
+      ctx.beginPath();
+      ctx.ellipse(fx + Math.cos(a) * 4, fy + Math.sin(a) * 4, 4, 3, a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#ffeb3b';
+    ctx.beginPath();
+    ctx.arc(fx, fy, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // cheeky grin when grabbing/sinking
+  if (m.state === 'grabbing' || m.state === 'sinking') {
+    ctx.strokeStyle = '#4e342e';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, bodyY + 7, 5, 0, Math.PI);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+// --- frogs ---
+function makeFrog(x, dir, color, size, hopDelay) {
+  return {
+    x, y: ground, dir, color, size,
+    hopPhase: 0, hopTimer: hopDelay,
+    hopVx: 0, hopVy: 0,
+    atRiver: false, sitting: false, sittingTimer: 0,
+    eyeBlink: 0, tongueOut: 0
+  };
+}
+
+function spawnFrogFamily() {
+  const fromLeft = Math.random() > 0.5;
+  const dir = fromLeft ? 1 : -1;
+  const startX = fromLeft ? -30 : W + 30;
+
+  // mom — lighter, big
+  frogs.push(makeFrog(startX, dir, '#81c784', 1.1, 0.3 + Math.random() * 0.2));
+  // dad — darker, big
+  frogs.push(makeFrog(startX - dir * 15, dir, '#2e7d32', 1.2, 0.5 + Math.random() * 0.2));
+  // 3 babies — small, staggered just behind parents
+  const babyColors = ['#66bb6a', '#4caf50', '#a5d6a7'];
+  for (let i = 0; i < 3; i++) {
+    frogs.push(makeFrog(
+      startX - dir * (28 + i * 12),
+      dir,
+      babyColors[i],
+      0.55 + Math.random() * 0.1,
+      0.7 + i * 0.3 + Math.random() * 0.15
+    ));
+  }
+}
+
+function drawFrog(f) {
+  const s = f.size;
+  // hop offset
+  const hopY = f.hopPhase > 0 ? -Math.sin(f.hopPhase * Math.PI) * 30 * s : 0;
+  const hopSquash = f.hopPhase > 0 ? 1 : (f.hopTimer < 0.15 ? 0.85 : 1); // squash before hop
+  const hopStretch = f.hopPhase > 0 ? 1.15 : 1;
+
+  ctx.save();
+  ctx.translate(f.x, f.y + hopY);
+  ctx.scale(f.dir * s, s);
+  ctx.scale(hopStretch, hopSquash);
+
+  // shadow on ground
+  if (f.hopPhase > 0) {
+    ctx.save();
+    ctx.scale(1 / hopStretch, 1 / hopSquash);
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    ctx.beginPath();
+    ctx.ellipse(0, -hopY / s, 14, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // back legs
+  ctx.fillStyle = f.color;
+  const legKick = f.hopPhase > 0 ? -0.5 : 0.3;
+  ctx.save();
+  ctx.translate(-10, -4);
+  ctx.rotate(legKick);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 8, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // foot
+  ctx.fillStyle = '#388e3c';
+  ctx.beginPath();
+  ctx.ellipse(-6, 3, 6, 3, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // body
+  ctx.fillStyle = f.color;
+  ctx.beginPath();
+  ctx.ellipse(0, -8, 14, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // belly
+  ctx.fillStyle = '#c8e6c9';
+  ctx.beginPath();
+  ctx.ellipse(2, -5, 9, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // front legs
+  ctx.fillStyle = f.color;
+  ctx.beginPath();
+  ctx.ellipse(8, -2, 5, 4, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // head
+  ctx.fillStyle = f.color;
+  ctx.beginPath();
+  ctx.ellipse(8, -14, 10, 8, 0.1, 0, Math.PI * 2);
+  ctx.fill();
+
+  // mouth line
+  ctx.strokeStyle = '#2e7d32';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(12, -12, 5, -0.1, 0.7 * Math.PI);
+  ctx.stroke();
+
+  // tongue (occasionally)
+  if (f.tongueOut > 0) {
+    ctx.strokeStyle = '#e57373';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(16, -11);
+    const tLen = f.tongueOut * 15;
+    ctx.quadraticCurveTo(18 + tLen * 0.5, -11, 16 + tLen, -8 + tLen * 0.3);
+    ctx.stroke();
+    // tongue tip
+    ctx.fillStyle = '#ef5350';
+    ctx.beginPath();
+    ctx.arc(16 + tLen, -8 + tLen * 0.3, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // eyes - big bulging frog eyes
+  for (const ex of [3, 13]) {
+    // eye bump
+    ctx.fillStyle = f.color;
+    ctx.beginPath();
+    ctx.arc(ex, -20, 6, 0, Math.PI * 2);
+    ctx.fill();
+    // eye white
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(ex, -20, 5, 0, Math.PI * 2);
+    ctx.fill();
+    // pupil
+    if (f.eyeBlink > 0) {
+      // blinking
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(ex - 3, -20);
+      ctx.lineTo(ex + 3, -20);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#333';
+      ctx.beginPath();
+      ctx.ellipse(ex + 1, -19, 2.5, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // shine
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(ex + 2, -21, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.restore();
+}
+
+// --- particles ---
+function burst(x, y, color) {
+  for (let i = 0; i < 12; i++) {
+    const angle = (Math.PI * 2 / 12) * i + Math.random() * 0.3;
+    const speed = 2 + Math.random() * 3;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 2,
+      r: 4 + Math.random() * 4,
+      color,
+      life: 1
+    });
+  }
+  // star burst
+  for (let i = 0; i < 5; i++) {
+    particles.push({
+      x: x + (Math.random() - 0.5) * 30,
+      y: y + (Math.random() - 0.5) * 30,
+      vx: (Math.random() - 0.5) * 2,
+      vy: -1 - Math.random() * 2,
+      r: 6,
+      color: '#ffeb3b',
+      life: 1,
+      star: true
+    });
+  }
+}
+
+// --- drawing helpers ---
+function drawFlower(f) {
+  const s = f.scale;
+  if (s <= 0) return;
+  const tipY = f.y - f.stemH * s;
+
+  // stem
+  ctx.strokeStyle = '#4caf50';
+  ctx.lineWidth = 4 * s;
+  ctx.beginPath();
+  ctx.moveTo(f.x, f.y);
+  ctx.quadraticCurveTo(f.x + 5 * s, f.y - f.stemH * 0.5 * s, f.x, tipY);
+  ctx.stroke();
+
+  // leaf
+  ctx.fillStyle = '#66bb6a';
+  ctx.beginPath();
+  const lx = f.x + 2, ly = f.y - f.stemH * 0.4 * s;
+  ctx.ellipse(lx + 8 * s, ly, 10 * s, 5 * s, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // petals
+  ctx.fillStyle = f.color;
+  for (let i = 0; i < f.petals; i++) {
+    const a = (Math.PI * 2 / f.petals) * i;
+    ctx.beginPath();
+    ctx.ellipse(
+      f.x + Math.cos(a) * f.r * 0.5 * s,
+      tipY + Math.sin(a) * f.r * 0.5 * s,
+      f.r * 0.5 * s, f.r * 0.35 * s, a, 0, Math.PI * 2
+    );
+    ctx.fill();
+  }
+
+  // center
+  ctx.fillStyle = '#ffeb3b';
+  ctx.beginPath();
+  ctx.arc(f.x, tipY, f.r * 0.3 * s, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawPlayer() {
+  const p = player;
+  const inAir = !p.onGround;
+  const bob = inAir ? 0 : Math.sin(p.bobTimer * 8) * 3 * Math.min(1, Math.abs(p.vx) / 3);
+  const baseY = p.y + bob;
+
+  ctx.save();
+  ctx.translate(p.x, baseY);
+  ctx.scale(p.dir, 1);
+
+  // slight tilt when jumping
+  if (inAir) ctx.rotate(p.vy * 0.015);
+
+  // body
+  ctx.fillStyle = '#42a5f5';
+  ctx.beginPath();
+  ctx.roundRect(-15, -55, 30, 35, 8);
+  ctx.fill();
+
+  // head
+  ctx.fillStyle = '#ffcc80';
+  ctx.beginPath();
+  ctx.arc(0, -68, 18, 0, Math.PI * 2);
+  ctx.fill();
+
+  // eyes — big and excited when jumping
+  ctx.fillStyle = '#333';
+  if (inAir) {
+    ctx.beginPath();
+    ctx.arc(-6, -72, 4, 0, Math.PI * 2);
+    ctx.arc(6, -72, 4, 0, Math.PI * 2);
+    ctx.fill();
+    // eye sparkle
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(-5, -73, 1.5, 0, Math.PI * 2);
+    ctx.arc(7, -73, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.arc(-6, -72, 3, 0, Math.PI * 2);
+    ctx.arc(6, -72, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // mouth — open and happy when jumping
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  if (inAir) {
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.ellipse(0, -63, 5, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.arc(0, -65, 7, 0.1 * Math.PI, 0.9 * Math.PI);
+    ctx.stroke();
+  }
+
+  // hair
+  ctx.fillStyle = '#8d6e63';
+  ctx.beginPath();
+  ctx.arc(0, -78, 16, Math.PI, 2 * Math.PI);
+  ctx.fill();
+
+  // legs — tucked up when jumping, walking when on ground
+  if (inAir) {
+    // tucked legs
+    ctx.fillStyle = '#5d4037';
+    ctx.save();
+    ctx.translate(-8, -22);
+    ctx.rotate(0.6);
+    ctx.fillRect(0, 0, 8, 18);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(4, -22);
+    ctx.rotate(-0.6);
+    ctx.fillRect(0, 0, 8, 18);
+    ctx.restore();
+
+    // shoes tucked
+    ctx.fillStyle = '#e53935';
+    ctx.beginPath();
+    ctx.ellipse(-14, -4, 7, 4, 0.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(14, -4, 7, 4, -0.6, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    const legSwing = Math.sin(p.bobTimer * 8) * 12 * Math.min(1, Math.abs(p.vx) / 3);
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(-10 + legSwing * 0.3, -20, 8, 22);
+    ctx.fillRect(2 - legSwing * 0.3, -20, 8, 22);
+
+    // shoes
+    ctx.fillStyle = '#e53935';
+    ctx.beginPath();
+    ctx.ellipse(-6 + legSwing * 0.3, 2, 8, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(6 - legSwing * 0.3, 2, 8, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // arms — raised up when jumping
+  ctx.strokeStyle = '#ffcc80';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  if (inAir) {
+    // arms up!
+    ctx.beginPath();
+    ctx.moveTo(12, -48);
+    ctx.lineTo(20, -62);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-12, -48);
+    ctx.lineTo(-20, -62);
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(12, -48);
+    const armReach = Math.sin(p.bobTimer * 4) * 5;
+    ctx.lineTo(22, -42 + armReach);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-12, -48);
+    ctx.lineTo(-22, -42 - armReach);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+
+  // landing dust poof
+  if (p._justLanded) {
+    for (let i = 0; i < 6; i++) {
+      particles.push({
+        x: p.x + (Math.random() - 0.5) * 20,
+        y: ground,
+        vx: (Math.random() - 0.5) * 3,
+        vy: -Math.random() * 2,
+        r: 3 + Math.random() * 3,
+        color: '#a5d6a7',
+        life: 0.6
+      });
+    }
+    p._justLanded = false;
+  }
+}
+
+function drawStar(x, y, r) {
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a = (Math.PI * 2 / 5) * i - Math.PI / 2;
+    const ax = x + Math.cos(a) * r;
+    const ay = y + Math.sin(a) * r;
+    const b = a + Math.PI / 5;
+    const bx = x + Math.cos(b) * r * 0.4;
+    const by = y + Math.sin(b) * r * 0.4;
+    if (i === 0) ctx.moveTo(ax, ay);
+    else ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+// --- main loop ---
+let lastTime = 0;
+let flowerTimer = 0;
+
+function update(dt) {
+  // player movement
+  const accel = 12;
+  const friction = 0.85;
+  if (keys.left) player.vx -= accel * dt;
+  if (keys.right) player.vx += accel * dt;
+  player.vx *= friction;
+  player.x += player.vx * 60 * dt;
+  player.bobTimer += dt;
+
+  // jump
+  if (keys.jump && player.onGround) {
+    player.vy = -14;
+    player.onGround = false;
+  }
+  player.vy += 40 * dt; // gravity
+  player.y += player.vy * 60 * dt;
+  if (player.y >= ground) {
+    if (!player.onGround) player._justLanded = true;
+    player.y = ground;
+    player.vy = 0;
+    player.onGround = true;
+  }
+
+  // river splash — gently push player to nearest bank
+  if (player.onGround && isInRiver(player.x)) {
+    // splash particles
+    if (!player._splashing) {
+      player._splashing = true;
+      for (let i = 0; i < 8; i++) {
+        particles.push({
+          x: player.x + (Math.random() - 0.5) * 20,
+          y: ground - 5,
+          vx: (Math.random() - 0.5) * 4,
+          vy: -2 - Math.random() * 3,
+          r: 3 + Math.random() * 3,
+          color: '#4fc3f7',
+          life: 0.8
+        });
+      }
+    }
+    // nudge to nearest bank
+    const toLeft = riverX - riverW / 2 - 20;
+    const toRight = riverX + riverW / 2 + 20;
+    const nearest = Math.abs(player.x - toLeft) < Math.abs(player.x - toRight) ? toLeft : toRight;
+    player.x += (nearest - player.x) * 5 * dt;
+    player.vx *= 0.8;
+  } else {
+    player._splashing = false;
+  }
+
+  if (Math.abs(player.vx) > 0.5) player.dir = player.vx > 0 ? 1 : -1;
+
+  // wrap around
+  if (player.x < -30) player.x = W + 30;
+  if (player.x > W + 30) player.x = -30;
+
+  // flowers
+  flowerTimer -= dt;
+  if (flowerTimer <= 0) {
+    spawnFlower();
+    flowerTimer = 1.5 + Math.random() * 2;
+  }
+
+  for (let i = flowers.length - 1; i >= 0; i--) {
+    const f = flowers[i];
+    f.age += dt;
+    f.scale = Math.min(1, f.age / 0.5); // grow in
+
+    // pickup check
+    const dx = player.x - f.x;
+    const dy = (player.y - 40) - (f.y - f.stemH * f.scale);
+    if (dx * dx + dy * dy < 45 * 45 && f.scale > 0.7) {
+      score++;
+      scoreEl.textContent = score;
+      burst(f.x, f.y - f.stemH, f.color);
+      spawnButterflyAt(f.x, f.y - f.stemH, f.color);
+      flowers.splice(i, 1);
+    }
+  }
+
+  // limit flowers
+  while (flowers.length > 15) flowers.shift();
+
+  // particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.1;
+    p.life -= dt * 1.5;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+
+  // clouds
+  for (const c of clouds) {
+    c.x += c.speed;
+    if (c.x - c.r * 2 > W) c.x = -c.r * 2;
+  }
+
+  // dragon
+  if (!dragon.active) {
+    dragon.timer -= dt;
+    if (dragon.timer <= 0) spawnDragon();
+  } else {
+    dragon.x += dragon.vx * 60 * dt;
+    dragon.wingPhase += dt * 5;
+    dragon.bobPhase += dt * 1.5;
+    dragon.y = dragon.baseY + Math.sin(dragon.bobPhase) * 15;
+    // off screen?
+    if ((dragon.vx > 0 && dragon.x > W + 300) || (dragon.vx < 0 && dragon.x < -300)) {
+      dragon.active = false;
+      dragon.timer = 30 + Math.random() * 40;
+    }
+  }
+
+  // butterflies
+  for (const b of butterflies) {
+    b.age += dt;
+    b.wingPhase += dt * 12;
+    b.wobblePhase += dt * 2;
+
+    // rise up from flower first, then wander
+    if (b.rising) {
+      b.y += (b.baseY - b.y) * 2 * dt;
+      if (Math.abs(b.y - b.baseY) < 5) b.rising = false;
+    } else {
+      b.y = b.baseY + Math.sin(b.wobblePhase) * 25;
+      b.baseY += Math.sin(b.age * 0.7) * 0.3;
+      // clamp vertical range
+      b.baseY = Math.max(30, Math.min(ground * 0.7, b.baseY));
+    }
+
+    // wandering direction changes
+    b.wanderTimer -= dt;
+    if (b.wanderTimer <= 0) {
+      b.vx = (Math.random() - 0.5) * 1.5;
+      b.wanderTimer = 2 + Math.random() * 3;
+    }
+
+    b.x += b.vx * 60 * dt;
+
+    // wrap around screen edges
+    if (b.x < -20) b.x = W + 20;
+    if (b.x > W + 20) b.x = -20;
+  }
+
+  // frogs
+  if (Math.random() < dt * 0.08 && frogs.length === 0) spawnFrogFamily();
+  for (let i = frogs.length - 1; i >= 0; i--) {
+    const f = frogs[i];
+
+    // blink timer
+    f.eyeBlink = Math.max(0, f.eyeBlink - dt);
+    if (Math.random() < dt * 0.5) f.eyeBlink = 0.15;
+
+    // tongue flick when sitting
+    if (f.sitting && f.tongueOut <= 0 && Math.random() < dt * 0.3) {
+      f.tongueOut = 1;
+    }
+    if (f.tongueOut > 0) f.tongueOut = Math.max(0, f.tongueOut - dt * 4);
+
+    if (f.sitting) {
+      // sit at river happily
+      f.sittingTimer -= dt;
+      if (f.sittingTimer <= 0) {
+        // hop away to the other side or leave
+        f.sitting = false;
+        f.atRiver = true;
+        f.dir = Math.random() > 0.5 ? 1 : -1;
+        f.hopTimer = 0.5;
+      }
+      continue;
+    }
+
+    if (f.hopPhase > 0) {
+      // in a hop
+      f.hopPhase += dt * 2.5;
+      f.x += f.hopVx * 60 * dt;
+      if (f.hopPhase >= 1) {
+        f.hopPhase = 0;
+        // arrived at river?
+        if (!f.atRiver && isInRiver(f.x, 20)) {
+          f.sitting = true;
+          f.sittingTimer = 3 + Math.random() * 4;
+          f.atRiver = true;
+          // splash
+          for (let j = 0; j < 4; j++) {
+            particles.push({
+              x: f.x + (Math.random() - 0.5) * 10,
+              y: ground - 3,
+              vx: (Math.random() - 0.5) * 2,
+              vy: -1 - Math.random() * 2,
+              r: 2 + Math.random() * 2,
+              color: '#4fc3f7',
+              life: 0.5
+            });
+          }
+        } else {
+          f.hopTimer = 0.3 + Math.random() * 0.6;
+        }
+      }
+    } else {
+      // waiting on ground
+      f.hopTimer -= dt;
+      if (f.hopTimer <= 0) {
+        f.hopPhase = 0.01;
+        // hop toward river if not there yet, else hop onward
+        if (!f.atRiver) {
+          f.hopVx = f.dir * (1 + Math.random() * 0.5);
+        } else {
+          f.hopVx = f.dir * (1 + Math.random() * 0.5);
+        }
+      }
+    }
+
+    // remove only if off screen on the far side (past the river, heading out)
+    if (f.atRiver && (f.x < -60 || f.x > W + 60)) {
+      frogs.splice(i, 1);
+    }
+  }
+
+  // mole
+  mole.timer -= dt;
+  switch (mole.state) {
+    case 'hidden':
+      if (mole.timer <= 0 && flowers.length >= 2) {
+        // pick a flower not in the river
+        const valid = flowers.filter(f => !isInRiver(f.x, 20));
+        if (valid.length === 0) { mole.timer = 2; break; }
+        mole.targetFlower = valid[Math.floor(Math.random() * valid.length)];
+        mole.x = mole.targetFlower.x;
+        mole.state = 'rising';
+        mole.show = 0;
+        mole.holdingFlower = null;
+      }
+      break;
+    case 'rising':
+      mole.show = Math.min(1, mole.show + dt * 2);
+      // look toward the flower
+      if (mole.targetFlower) {
+        mole.eyeDir = Math.sign(mole.targetFlower.x - mole.x) * 2;
+      }
+      if (mole.show >= 1) {
+        mole.state = 'peeking';
+        mole.timer = 0.8 + Math.random() * 0.5;
+      }
+      break;
+    case 'peeking':
+      // look around sneakily
+      mole.eyeDir = Math.sin(mole.timer * 8) * 3;
+      if (mole.timer <= 0) {
+        // steal the flower!
+        if (mole.targetFlower && flowers.includes(mole.targetFlower)) {
+          mole.holdingFlower = { color: mole.targetFlower.color };
+          const idx = flowers.indexOf(mole.targetFlower);
+          flowers.splice(idx, 1);
+          mole.state = 'grabbing';
+          mole.timer = 0.7;
+        } else {
+          // flower was already picked, just sink back
+          mole.state = 'sinking';
+        }
+      }
+      break;
+    case 'grabbing':
+      mole.eyeDir = 0;
+      if (mole.timer <= 0) {
+        mole.state = 'sinking';
+      }
+      break;
+    case 'sinking':
+      mole.show = Math.max(0, mole.show - dt * 2.5);
+      if (mole.show <= 0) {
+        mole.state = 'hidden';
+        mole.timer = 5 + Math.random() * 6;
+        mole.targetFlower = null;
+        mole.holdingFlower = null;
+      }
+      break;
+  }
+}
+
+function draw() {
+  // sky gradient
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+  skyGrad.addColorStop(0, '#4fc3f7');
+  skyGrad.addColorStop(0.6, '#81d4fa');
+  skyGrad.addColorStop(1, '#b3e5fc');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // sun
+  ctx.fillStyle = '#fff176';
+  ctx.beginPath();
+  ctx.arc(W - 80, 80, 50, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffee58';
+  ctx.beginPath();
+  ctx.arc(W - 80, 80, 38, 0, Math.PI * 2);
+  ctx.fill();
+
+  // clouds
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  for (const c of clouds) {
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+    ctx.arc(c.x + c.r * 0.7, c.y - c.r * 0.2, c.r * 0.7, 0, Math.PI * 2);
+    ctx.arc(c.x - c.r * 0.6, c.y + c.r * 0.1, c.r * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // dragon (behind hills, in the distance)
+  drawDragon();
+
+  // hills
+  ctx.fillStyle = '#81c784';
+  ctx.beginPath();
+  ctx.moveTo(0, ground + 10);
+  for (let x = 0; x <= W; x += W / 4) {
+    ctx.quadraticCurveTo(x + W / 8, ground - 40, x + W / 4, ground + 10);
+  }
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.fill();
+
+  // ground
+  ctx.fillStyle = '#66bb6a';
+  ctx.fillRect(0, ground, W, H - ground);
+
+  // river
+  const rl = riverX - riverW / 2;
+  const rr = riverX + riverW / 2;
+  // river banks
+  ctx.fillStyle = '#5d4037';
+  ctx.beginPath();
+  ctx.ellipse(rl, ground + 4, 12, 20, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(rr, ground + 4, 12, 20, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // water
+  const waterGrad = ctx.createLinearGradient(rl, 0, rr, 0);
+  waterGrad.addColorStop(0, '#1565c0');
+  waterGrad.addColorStop(0.3, '#1e88e5');
+  waterGrad.addColorStop(0.5, '#42a5f5');
+  waterGrad.addColorStop(0.7, '#1e88e5');
+  waterGrad.addColorStop(1, '#1565c0');
+  ctx.fillStyle = waterGrad;
+  ctx.fillRect(rl, ground - 2, riverW, 44);
+
+  // water surface shimmer
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1.5;
+  const t = performance.now() * 0.001;
+  for (let i = 0; i < 4; i++) {
+    const sy = ground + 6 + i * 9;
+    const sx = rl + 8 + Math.sin(t * 1.5 + i * 2) * 5;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.quadraticCurveTo(sx + riverW * 0.25, sy - 3 + Math.sin(t * 2 + i) * 2, sx + riverW * 0.5, sy);
+    ctx.stroke();
+  }
+
+  // small rocks by the river
+  ctx.fillStyle = '#9e9e9e';
+  ctx.beginPath();
+  ctx.ellipse(rl - 8, ground + 2, 5, 3, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(rr + 10, ground + 4, 6, 3, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#bdbdbd';
+  ctx.beginPath();
+  ctx.ellipse(rl - 15, ground + 5, 4, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // dirt edge (skip over river)
+  ctx.fillStyle = '#8d6e63';
+  ctx.fillRect(0, ground + 40, rl, H);
+  ctx.fillRect(rr, ground + 40, W - rr, H);
+
+  // grass tufts
+  ctx.strokeStyle = '#4caf50';
+  ctx.lineWidth = 2;
+  for (const g of grassTufts) {
+    if (isInRiver(g.x, 5)) continue;
+    ctx.beginPath();
+    ctx.moveTo(g.x, ground);
+    ctx.quadraticCurveTo(g.x + g.lean * 20, ground - g.h * 0.6, g.x + g.lean * 8, ground - g.h);
+    ctx.stroke();
+  }
+
+  // flowers
+  for (const f of flowers) drawFlower(f);
+
+  // mole
+  drawMole();
+
+  // frogs
+  for (const f of frogs) drawFrog(f);
+
+  // butterflies
+  for (const b of butterflies) drawButterfly(b);
+
+  // player
+  drawPlayer();
+
+  // particles
+  for (const p of particles) {
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    if (p.star) {
+      drawStar(p.x, p.y, p.r * p.life);
+    } else {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+function loop(time) {
+  const dt = Math.min(0.05, (time - lastTime) / 1000);
+  lastTime = time;
+  if (started) {
+    update(dt);
+    draw();
+  }
+  requestAnimationFrame(loop);
+}
+
+// --- input ---
+addEventListener('keydown', e => {
+  if (!started) start();
+  if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+  if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+  if (e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') keys.jump = true;
+});
+addEventListener('keyup', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+  if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+  if (e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') keys.jump = false;
+});
+
+// touch
+function handleTouch(el, key) {
+  el.addEventListener('touchstart', e => { e.preventDefault(); if (!started) start(); keys[key] = true; });
+  el.addEventListener('touchend', e => { e.preventDefault(); keys[key] = false; });
+  el.addEventListener('touchcancel', e => { keys[key] = false; });
+  el.addEventListener('mousedown', e => { if (!started) start(); keys[key] = true; });
+  el.addEventListener('mouseup', e => { keys[key] = false; });
+}
+handleTouch(document.getElementById('touch-left'), 'left');
+handleTouch(document.getElementById('touch-right'), 'right');
+
+startScreen.addEventListener('click', () => { if (!started) start(); });
+startScreen.addEventListener('touchstart', e => { e.preventDefault(); if (!started) start(); });
+
+function start() {
+  started = true;
+  startScreen.style.display = 'none';
+  initRiver();
+  initPlayer();
+  spawnClouds();
+  spawnGrass();
+  // start with a few flowers
+  for (let i = 0; i < 5; i++) spawnFlower();
+  flowerTimer = 2;
+}
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
