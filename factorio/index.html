@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Countdown to October 21st, 2024</title>
+    <title>Time since Factorio: Space Age Release</title>
     <style>
         body {
             display: flex;
@@ -49,7 +49,7 @@
     </style>
 </head>
 <body>
-    <div id="title">Factorio: Space Age Release</div>
+    <div id="title">Time since Factorio: Space Age Release</div>
     <div id="countdown"></div>
     <div class="progress-container">
         <div class="progress-background">
@@ -75,8 +75,8 @@
     <script>
         function updateCountdown() {
             const now = new Date().getTime();
-            const targetDate = new Date('October 21, 2024 00:00:00').getTime();
-            const distance = targetDate - now;
+            const releaseDate = new Date('October 21, 2024 00:00:00').getTime();
+            const distance = now - releaseDate;
 
             const days = Math.floor(distance / (1000 * 60 * 60 * 24));
             const hours = String(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, '0');
@@ -94,27 +94,16 @@
             const minuteProgress = (now % (1000 * 60)) / (1000 * 60);
             const secondProgress = (now % 1000) / 1000;
 
-            document.getElementById('progress-day').style.width = (1 - dayProgress) * 100 + '%';
-            document.getElementById('progress-day').style.left = (dayProgress * 50) + '%';
-            document.getElementById('progress-hour').style.width = (1 - hourProgress) * 100 + '%';
-            document.getElementById('progress-hour').style.left = (hourProgress * 50) + '%';
-            document.getElementById('progress-minute').style.width = (1 - minuteProgress) * 100 + '%';
-            document.getElementById('progress-minute').style.left = (minuteProgress * 50) + '%';
-            document.getElementById('progress-second').style.width = (1 - secondProgress) * 100 + '%';
-            document.getElementById('progress-second').style.left = (secondProgress * 50) + '%';
+            document.getElementById('progress-day').style.width = dayProgress * 100 + '%';
+            document.getElementById('progress-day').style.left = '0';
+            document.getElementById('progress-hour').style.width = hourProgress * 100 + '%';
+            document.getElementById('progress-hour').style.left = '0';
+            document.getElementById('progress-minute').style.width = minuteProgress * 100 + '%';
+            document.getElementById('progress-minute').style.left = '0';
+            document.getElementById('progress-second').style.width = secondProgress * 100 + '%';
+            document.getElementById('progress-second').style.left = '0';
 
-            if (distance < 0) {
-                clearInterval(countdownInterval);
-                document.getElementById('countdown').innerHTML = "Time's up!";
-                document.title = "Time's up!";
-                document.getElementById('progress-day').style.width = '0%';
-                document.getElementById('progress-hour').style.width = '0%';
-                document.getElementById('progress-minute').style.width = '0%';
-                document.getElementById('progress-second').style.width = '0%';
-            } else {
-                // Schedule next update only after this one is done
-                requestAnimationFrame(updateCountdown);
-            }
+            requestAnimationFrame(updateCountdown);
         }
 
         requestAnimationFrame(updateCountdown);
