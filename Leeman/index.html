@@ -1,62 +1,80 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stonks Inc.</title>
 
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.jquery.com/jquery-4.0.0.min.js"></script>
   <script src="main.js"></script>
-  <link rel="stylesheet" type="text/css" href="styles.css">
 
+  <style>
+    .tooltip {
+      display: none;
+      position: absolute;
+      border: 1px solid;
+      border-radius: 5px;
+      padding: 10px;
+    }
+  </style>
 </head>
 
-<body>
-  <div class="header" id="head">
-    <h4>Leeman Bothers Finance Institute Simulator</h4>
-    <div class="frame">
-      <div class="txt">Your cash</div>
-      <div class="button" id="btn_cash">0</div>
+<body class="font-mono bg-black text-[18pt] text-center select-none text-white">
+  <div class="absolute left-1/2 -translate-x-1/2 w-[95%]" id="head">
+    <h4>Stonks Inc.</h4>
+    <div class="frame p-[5px] m-2 border-2 border-solid border-white rounded-none text-[14pt] text-left">
+      <div id="txt_cash_label">Your cash</div>
+      <div class="text-white bg-[darkblue] m-1 p-[5px] rounded-none hover:bg-[lightblue] hover:text-[darkred] cursor-pointer" id="btn_cash">0</div>
     </div>
-    <div class="frame" id="frame_upgrades">
-      <div class="txt">Upgrades</div>
-      <div class="button" id="btn_clickIncrease">Buy energy drink for 100</div>
-      <div class="button" id="btn_officeIncrease">Increase your office for 1000</div>
-      <div class="button" id="btn_collector">Buy Collector for 10 [0]</div>
-      <div class="button" id="btn_collector_up">Upgrade Collectors for 25 [0]</div>
-      <div class="button" id="btn_investor">Buy Investor for 200 [0] </div>
+    <div class="frame p-[5px] m-2 border-2 border-solid border-white rounded-none text-[14pt] text-left" id="frame_upgrades">
+      <div>Upgrades</div>
+      <div class="text-white bg-[darkblue] m-1 p-[5px] rounded-none hover:bg-[lightblue] hover:text-[darkred] cursor-pointer" id="btn_clickIncrease">Buy energy drink for 100</div>
+      <div class="text-white bg-[darkblue] m-1 p-[5px] rounded-none hover:bg-[lightblue] hover:text-[darkred] cursor-pointer" id="btn_officeIncrease">Increase your office for 1000</div>
+      <div class="text-white bg-[darkblue] m-1 p-[5px] rounded-none hover:bg-[lightblue] hover:text-[darkred] cursor-pointer" id="btn_collector">Buy Collector for 10 [0]</div>
+      <div class="text-white bg-[darkblue] m-1 p-[5px] rounded-none hover:bg-[lightblue] hover:text-[darkred] cursor-pointer" id="btn_collector_up">Upgrade Collectors for 25 [0]</div>
+      <div class="text-white bg-[darkblue] m-1 p-[5px] rounded-none hover:bg-[lightblue] hover:text-[darkred] cursor-pointer" id="btn_investor">Buy Investor for 200 [0] </div>
+      <div class="text-white bg-[darkblue] m-1 p-[5px] rounded-none hover:bg-[lightblue] hover:text-[darkred] cursor-pointer" id="btn_longtimeUnlock">Learn Longtime Investment for 5000</div>
+      <div class="text-white bg-[darkblue] m-1 p-[5px] rounded-none hover:bg-[lightblue] hover:text-[darkred] cursor-pointer" id="btn_longtimeInvest">Longtime Investment: invest 10 → get 11 (5 ticks)</div>
+      <div class="text-white bg-[darkblue] m-1 p-[5px] rounded-none hover:bg-[lightblue] hover:text-[darkred] cursor-pointer" id="btn_longtimeUpgrade">Upgrade Investment for 500 [Lv.0]</div>
+      <div id="txt_longtimeStatus"></div>
     </div>
-    <div class="frame">
-      <div class="txt">More</div>
-      <div class="button" id="btn_stats">Stats</div>
-      <div class="frame" id="solhab">
-        <div class="frame">
-          <div class="txt">General</div>
-          <div class="txt" id="txt_cash"></div>
-          <div class="txt" id="txt_salary"></div>
-          <div class="txt" id="txt_officeSpace">Office Space: 1/3</div>
+    <div class="frame p-[5px] m-2 border-2 border-solid border-white rounded-none text-[14pt] text-left">
+      <div>More</div>
+      <div class="text-white bg-[darkblue] m-1 p-[5px] rounded-none hover:bg-[lightblue] hover:text-[darkred] cursor-pointer" id="btn_stats">Stats</div>
+      <div class="frame p-[5px] m-2 border-2 border-solid border-white rounded-none text-[14pt] text-left" id="solhab">
+        <div class="frame p-[5px] m-2 border-2 border-solid border-white rounded-none text-[14pt] text-left">
+          <div>General</div>
+          <div id="txt_cash"></div>
+          <div id="txt_salary"></div>
+          <div id="txt_officeSpace">Office Space: 0/3</div>
+          <div id="txt_dept">Debt: 0.00 cash</div>
         </div>
-        <div class="frame">
-          <div class="txt">Plus and Minus</div>
-          <div class="txt" id="txt_plusClick"></div>
-          <div class="txt" id="txt_plusCollector"></div>
-          <div class="txt" id="txt_plusInvestor"></div>
-          <div class="txt" id="txt_minusCollector"></div>
-          <div class="txt" id="txt_minusInvestor"></div>
+        <div class="frame p-[5px] m-2 border-2 border-solid border-white rounded-none text-[14pt] text-left">
+          <div>Plus and Minus</div>
+          <div id="txt_plusClick"></div>
+          <div id="txt_plusCollector"></div>
+          <div id="txt_plusInvestor"></div>
+          <div id="txt_minusCollector"></div>
+          <div id="txt_minusInvestor"></div>
         </div>
-        <div class="frame">
-          <div class="txt">Totals</div>
-          <div class="txt" id="txt_totalCash"></div>
+        <div class="frame p-[5px] m-2 border-2 border-solid border-white rounded-none text-[14pt] text-left">
+          <div>Totals</div>
+          <div id="txt_totalCash"></div>
+          <div id="txt_prestige"></div>
         </div>
       </div>
-      <div class="button" id="btn_grabLoan">Grab Loan (500 cash; 5%/10s interests) [0]</div>
-      <div class="button" id="btn_achievement">Achievements</div>
-      <div class="frame" id="txt_achievement"></div>
-      <div class="button" id="btn_help">Help</div>
-      <div class="frame" id="txt_help">You are the boss of a small company, but may rise to a great business-idol. You gain cash by clicking on your cash. After a while you can hire your first workers. You need to pay them and they will earn cash for you. After 10 new workers hired you
-        can grab yourself an energy drink to double the cash you make by clicking.</p>Further information can be found in the Stats.</p>Happy clicking.</div>
-      <div class="button" id="btn_impressum">Other Stuffs</div>
-      <div class="frame" id="txt_impressum">Thanks to all the great guys at /r/incremental_games for their input and feedback. Also thanks to www.alessioatzeni.com for his tooltip approach.</p>No idea about licence. Its posted on codepen, so I guess it belongs to them. From my side at least,
-        you can take whatever you like of this idea/code/design and do with it whatever you want.</div>
+      <div class="text-white bg-[darkblue] m-1 p-[5px] rounded-none hover:bg-[lightblue] hover:text-[darkred] cursor-pointer" id="btn_grabLoan">Grab Loan (500 cash; 5%/10s interests) [0]</div>
+      <div class="text-white bg-[darkblue] m-1 p-[5px] rounded-none hover:bg-[lightblue] hover:text-[darkred] cursor-pointer" id="btn_repayLoan">Repay Loan</div>
+      <div class="text-white bg-[darkblue] m-1 p-[5px] rounded-none hover:bg-[lightblue] hover:text-[darkred] cursor-pointer" id="btn_save">Save Game</div>
+      <div class="text-white bg-[darkblue] m-1 p-[5px] rounded-none hover:bg-[lightblue] hover:text-[darkred] cursor-pointer" id="btn_reset">Reset Game</div>
+      <div class="text-white bg-[darkblue] m-1 p-[5px] rounded-none hover:bg-[lightblue] hover:text-[darkred] cursor-pointer" id="btn_bankruptcy">Declare Bankruptcy</div>
+      <div class="text-white bg-[darkblue] m-1 p-[5px] rounded-none hover:bg-[lightblue] hover:text-[darkred] cursor-pointer" id="btn_achievement">Achievements</div>
+      <div class="frame p-[5px] m-2 border-2 border-solid border-white rounded-none text-[14pt] text-left" id="txt_achievement"></div>
+      <div class="text-white bg-[darkblue] m-1 p-[5px] rounded-none hover:bg-[lightblue] hover:text-[darkred] cursor-pointer" id="btn_help">Help</div>
+      <div class="frame p-[5px] m-2 border-2 border-solid border-white rounded-none text-[14pt] text-left" id="txt_help">You are the boss of a small company, but may rise to a great business-idol. You gain cash by clicking on your cash. After a while you can hire your first workers. You need to pay them and they will earn cash for you. After 10 new workers hired you
+        can grab yourself an energy drink to double the cash you make by clicking.<br>Further information can be found in the Stats.<br>Happy clicking.</div>
     </div>
   </div>
 </body>
