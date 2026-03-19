@@ -1,9 +1,9 @@
 [
-  { "link": "./blumen", "title": "Blumenpflücken", "desc": "Jump around and pick flowers while dodging dragons and moles", "svg": "" },
-  { "link": "./chain-lightning", "title": "Chain Lightning Hero", "desc": "Zap enemies with chaining lightning bolts in this tower defense game", "svg": "" },
-  { "link": "./codes", "title": "Codes", "desc": "Generate random 4-character codes and copy them to clipboard", "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40' width='32' height='32'><text x='2' y='14' font-family='monospace' font-size='10' fill='#888'>yFLz</text><text x='10' y='24' font-family='monospace' font-size='10' fill='#aaa'>t0Lo</text><text x='18' y='34' font-family='monospace' font-size='10' fill='#ccc'>n51P</text></svg>" },
-  { "link": "./factorio", "title": "Factorio Space Age Countdown", "desc": "Countdown timer for the Factorio Space Age expansion release", "svg": "" },
-  { "link": "./compound", "title": "Compound Interest", "desc": "Watch money grow in real time with continuous compounding", "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40' width='32' height='32'><defs><linearGradient id='cg' x1='0' y1='1' x2='1' y2='0'><stop offset='0%' stop-color='#555'/><stop offset='100%' stop-color='#ccc'/></linearGradient></defs><path d='M4 36 Q20 34 28 20 T36 4' fill='none' stroke='url(#cg)' stroke-width='2.5' stroke-linecap='round'/></svg>" },
-  { "link": "./Leeman", "title": "Leeman", "desc": "Idle clicker where you build a financial empire from scratch", "svg": "" },
-  { "link": "./progressbars", "title": "Progressbars", "desc": "Click progress bars, trigger chain reactions, unlock combos", "svg": "" }
+  { "link": "./blumen", "title": "Blumenpflücken", "desc": "Jump around and pick flowers", "svg": "" },
+  { "link": "./chain-lightning", "title": "Chain Lightning Hero", "desc": "", "svg": "" },
+  { "link": "./codes", "title": "Codes", "desc": "Generate random 4-character codes for quick use", "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40' width='32' height='32'><text x='2' y='14' font-family='monospace' font-size='10' fill='#888'>yFLz</text><text x='10' y='24' font-family='monospace' font-size='10' fill='#aaa'>t0Lo</text><text x='18' y='34' font-family='monospace' font-size='10' fill='#ccc'>n51P</text></svg>" },
+  { "link": "./factorio", "title": "Factorio Space Age Countdown", "desc": "", "svg": "" },
+  { "link": "./compound", "title": "Compound Interest", "desc": "Watch money grow in real time and be sad about the effect", "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40' width='32' height='32'><defs><linearGradient id='cg' x1='0' y1='1' x2='1' y2='0'><stop offset='0%' stop-color='#555'/><stop offset='100%' stop-color='#ccc'/></linearGradient></defs><path d='M4 36 Q20 34 28 20 T36 4' fill='none' stroke='url(#cg)' stroke-width='2.5' stroke-linecap='round'/></svg>" },
+  { "link": "./Leeman", "title": "Leeman", "desc": "2012(?) I tried my luck with some jQuery", "svg": "" },
+  { "link": "./progressbars", "title": "Progressbars", "desc": "My experiment if progress bars gan act as a primary game component", "svg": "" }
 ]
