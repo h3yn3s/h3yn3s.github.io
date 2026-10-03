@@ -53,7 +53,7 @@ button:focus-visible,.tog:focus-within{outline:2px solid var(--path);outline-off
     </div>
   </header>
   <div class="stage"><canvas id="cv"></canvas></div>
-  <p class="hint"><b>Tap</b> to pause or play. While paused, drag <b>from your gunslinger</b> for the <span class="g">green path</span>, drag <b>anywhere else</b> for the white look line. Each gap marks a quarter second. He shoots whatever enters his cone.</p>
+  <p class="hint"><b>Tap</b> to pause or play. While paused, drag <b>from your gunslinger</b> for the <span class="g">green path</span>, drag <b>anywhere else</b> for the white look line. He won't move without a look line, and sharp turns in the path slow him down. Each gap marks a quarter second. He shoots whatever enters his cone.</p>
   <div class="controls">
     <button id="reset" type="button">Reset</button>
     <button id="clear" type="button">Clear plan</button>
@@ -66,6 +66,7 @@ button:focus-visible,.tog:focus-within{outline:2px solid var(--path);outline-off
 <script>
 const W=600,H=900,SPEED=120,BEAT=0.25,E_RANGE=360,E_HALF=0.6,E_REACT=0.7,PR=12;
 const AREA=0.5*200*200*0.7; // constant cone area: 40° at 200px
+const TURN_WIN=20,TURN_MIN=0.5,TURN_MAX=2.2,TURN_SLOW=0.75; // sharp-turn penalty: heading change over ±20px, up to 75% slower
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 let scale=1,ox=0,oy=0,dpr=1;
 function resize(){const r=cv.getBoundingClientRect();dpr=window.devicePixelRatio||1;cv.width=Math.max(1,r.width*dpr);cv.height=Math.max(1,r.height*dpr);scale=Math.min(r.width/W,r.height/H);ox=(r.width-W*scale)/2;oy=(r.height-H*scale)/2;}
@@ -91,6 +92,14 @@ function blocked(x,y,r){if(x<r||y<r||x>W-r||y>H-r)return true;return obstacles.s
 function poly(pts){const cum=[0];for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y));return{pts,cum,len:cum[cum.length-1]};}
 function at(p,t){if(p.len===0)return{x:p.pts[0].x,y:p.pts[0].y};const s=clamp(t,0,1)*p.len;let i=1;while(i<p.cum.length-1&&p.cum[i]<s)i++;const a=p.pts[i-1],b=p.pts[i],seg=p.cum[i]-p.cum[i-1];const u=seg?(s-p.cum[i-1])/seg:0;return{x:a.x+(b.x-a.x)*u,y:a.y+(b.y-a.y)*u};}
 function trim(p,t){const s=clamp(t,0,1)*p.len;const pts=[at(p,t)];for(let i=0;i<p.pts.length;i++)if(p.cum[i]>s+0.01)pts.push(p.pts[i]);return poly(pts);}
+/* walk timing: each vertex gets a speed factor from how sharply the path turns around it */
+function timed(p){const n=p.pts.length,f=[];
+  for(let i=0;i<n;i++){let j=i,k=i;while(j>0&&p.cum[i]-p.cum[j]<TURN_WIN)j--;while(k<n-1&&p.cum[k]-p.cum[i]<TURN_WIN)k++;
+    if(j===i||k===i){f.push(1);continue;}const a=p.pts[j],b=p.pts[i],c=p.pts[k];
+    const u=clamp((Math.abs(angDiff(Math.atan2(c.y-b.y,c.x-b.x),Math.atan2(b.y-a.y,b.x-a.x)))-TURN_MIN)/(TURN_MAX-TURN_MIN),0,1);f.push(1-TURN_SLOW*u*u*(3-2*u));}
+  p.tm=[0];for(let i=1;i<n;i++)p.tm.push(p.tm[i-1]+(p.cum[i]-p.cum[i-1])/(SPEED*Math.min(f[i-1],f[i])));p.dur=p.tm[n-1];return p;}
+function distAt(p,time){if(time>=p.dur)return p.len;let i=1;while(i<p.tm.length-1&&p.tm[i]<time)i++;const seg=p.tm[i]-p.tm[i-1];
+  return p.cum[i-1]+(p.cum[i]-p.cum[i-1])*(seg?clamp((time-p.tm[i-1])/seg,0,1):0);}
 
 function cone(d){const L=clamp(d,80,440);const th=clamp(2*AREA/(L*L),0.14,2.6);return{L,th};}
 
@@ -99,20 +108,20 @@ let S,g=null;
 function mk(x,y,f,amp,patrol){return{x,y,base:f,face:f,amp,ph:Math.random()*6,patrol,dir:1,alive:true,see:0,cd:0.8+Math.random()*0.6};}
 function reset(){S={paused:true,over:null,clock:0,
   player:{x:300,y:840,face:-Math.PI/2,hp:3,ammo:6,reload:0,cd:0,flash:0,lockT:null,lock:0,lookDist:200},
-  green:null,trav:0,white:null,standT:0,standDur:2,plan:false,
+  green:null,gt:0,white:null,standT:0,standDur:2,plan:false,
   enemies:[mk(150,110,Math.PI/2,0.7),mk(470,110,0,0.5,{a:{x:420,y:110},b:{x:560,y:110}}),mk(60,470,0,0.6),
            mk(530,420,Math.PI/2,0.4,{a:{x:530,y:420},b:{x:530,y:600}}),mk(300,300,Math.PI/2,0.9)],
   bullets:[],parts:[]};g=null;}
 reset();
 
-function planT(){if(S.green)return S.green.len?S.trav/S.green.len:1;if(S.white)return Math.min(1,S.standT/S.standDur);return 1;}
+function planT(){if(S.green)return S.green.dur?S.gt/S.green.dur:1;if(S.white)return Math.min(1,S.standT/S.standDur);return 1;}
 function lookPoint(){const P=S.player;if(S.white)return at(S.white,planT());return{x:P.x+Math.cos(P.face)*P.lookDist,y:P.y+Math.sin(P.face)*P.lookDist};}
 
 function pauseNow(){if(S.paused)return;S.paused=true;if(!S.plan)return;const t=planT();
   if(S.white){if(!S.green)S.standDur=Math.max(0.3,S.standDur*(1-t));S.white=trim(S.white,t);S.standT=0;if(S.white.len<1)S.white=null;}
-  if(S.green){S.green=trim(S.green,t);S.trav=0;if(S.green.len<1)S.green=null;}
+  if(S.green){S.green=timed(trim(S.green,distAt(S.green,S.gt)/S.green.len));S.gt=0;if(S.green.len<1)S.green=null;}
   S.plan=!!(S.green||S.white);}
-function togglePlay(){if(S.over)return;if(S.paused){S.paused=false;S.plan=!!(S.green||S.white);}else pauseNow();}
+function togglePlay(){if(S.over)return;if(S.paused){if(!S.white){S.warn=performance.now();return;}S.paused=false;S.plan=true;}else pauseNow();}
 
 function fire(src,tgt,spread,owner){const a=Math.atan2(tgt.y-src.y,tgt.x-src.x)+(Math.random()*2-1)*spread;const sp=owner==='p'?560:420;
   S.bullets.push({x:src.x+Math.cos(a)*16,y:src.y+Math.sin(a)*16,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,sp,o:owner,alive:true});
@@ -122,12 +131,10 @@ function turn(e,target,max){e.face+=clamp(angDiff(target,e.face),-max,max);}
 
 function step(dt){
   const P=S.player;S.clock+=dt;
-  const prev={x:P.x,y:P.y};let moving=false;
-  if(S.green&&S.trav<S.green.len){const nt=Math.min(S.green.len,S.trav+SPEED*dt);const q=at(S.green,nt/S.green.len);
-    if(blocked(q.x,q.y,PR))S.trav=S.green.len;else{S.trav=nt;P.x=q.x;P.y=q.y;moving=true;}}
+  if(S.green&&S.gt<S.green.dur){const nt=Math.min(S.green.dur,S.gt+dt);const q=at(S.green,distAt(S.green,nt)/S.green.len);
+    if(blocked(q.x,q.y,PR))S.gt=S.green.dur;else{S.gt=nt;P.x=q.x;P.y=q.y;}}
   else if(!S.green&&S.white)S.standT+=dt;
   if(S.white){const lp=lookPoint(),d=Math.hypot(lp.x-P.x,lp.y-P.y);if(d>1)P.face=Math.atan2(lp.y-P.y,lp.x-P.x);P.lookDist=Math.max(80,d);}
-  else if(moving){const dx=P.x-prev.x,dy=P.y-prev.y;if(dx*dx+dy*dy>1e-4)P.face=Math.atan2(dy,dx);}
   if(S.plan&&planT()>=1){S.green=null;S.white=null;S.plan=false;if(document.getElementById('auto').checked)S.paused=true;}
 
   /* player auto-fire inside cone */
@@ -171,7 +178,7 @@ cv.addEventListener('pointermove',e=>{if(!g||e.pointerId!==g.id)return;const w=t
   if(!g.drawing){if(Math.hypot(w.x-g.sx,w.y-g.sy)*scale<10)return;g.drawing=true;g.pts=[g.mode==='green'?{x:S.player.x,y:S.player.y}:{x:g.sx,y:g.sy}];}
   const l=g.pts[g.pts.length-1];if(Math.hypot(w.x-l.x,w.y-l.y)>5)g.pts.push(w);});
 function endG(e,cancel){if(!g||e.pointerId!==g.id)return;
-  if(!cancel&&g.drawing&&g.pts.length>1){const p=poly(g.pts);if(p.len>8){if(g.mode==='green'){S.green=p;S.trav=0;}else{S.white=p;S.standT=0;S.standDur=2;}S.plan=false;}}
+  if(!cancel&&g.drawing&&g.pts.length>1){const p=poly(g.pts);if(p.len>8){if(g.mode==='green'){S.green=timed(p);S.gt=0;}else{S.white=p;S.standT=0;S.standDur=2;}S.plan=false;}}
   else if(!cancel&&!g.drawing&&!g.fromPlay)togglePlay();g=null;}
 cv.addEventListener('pointerup',e=>endG(e,false));cv.addEventListener('pointercancel',e=>endG(e,true));
 document.getElementById('reset').onclick=reset;
@@ -186,6 +193,12 @@ function beatStroke(p,col,w,rem,phase){if(!p||p.pts.length<2||rem<=0)return;cons
   ctx.beginPath();ctx.moveTo(p.pts[0].x,p.pts[0].y);for(const q of p.pts)ctx.lineTo(q.x,q.y);ctx.strokeStyle=col;ctx.lineWidth=w;ctx.lineJoin='round';
   if(seg<5){ctx.lineCap='round';ctx.setLineDash([]);}else{const gap=clamp(seg*0.28,2.5,7);ctx.lineCap='butt';ctx.setLineDash([seg-gap,gap]);ctx.lineDashOffset=phase*seg;}
   ctx.stroke();ctx.setLineDash([]);ctx.lineDashOffset=0;}
+/* green path: dashes cut at quarter-second marks of the walk, so they bunch up where turns slow him */
+function beatTimed(p,t0,col,w){ctx.beginPath();
+  for(let k=Math.floor(t0/BEAT);k*BEAT<p.dur;k++){const d0=distAt(p,k*BEAT),a=Math.max(d0,distAt(p,t0)),b=distAt(p,(k+1)*BEAT);
+    const e=(k+1)*BEAT<p.dur?b-clamp((b-d0)*0.28,2.5,7):b;if(e<=a)continue;
+    const A=at(p,a/p.len),E=at(p,e/p.len);ctx.moveTo(A.x,A.y);for(let i=0;i<p.pts.length;i++)if(p.cum[i]>a&&p.cum[i]<e)ctx.lineTo(p.pts[i].x,p.pts[i].y);ctx.lineTo(E.x,E.y);}
+  ctx.strokeStyle=col;ctx.lineWidth=w;ctx.lineCap='butt';ctx.lineJoin='round';ctx.stroke();}
 function dot(x,y,r,col){ctx.beginPath();ctx.arc(x,y,r,0,6.283);ctx.fillStyle=col;ctx.fill();}
 
 function draw(now){
@@ -205,24 +218,24 @@ function draw(now){
   /* plans */
   const t=planT();
   const draftG=!!(g&&g.drawing&&g.mode==='green'),draftW=!!(g&&g.drawing&&g.mode==='white');
-  let gp=draftG?poly(g.pts):(S.green?trim(S.green,t):null);
+  let gp=draftG?timed(poly(g.pts)):S.green;const gt=draftG?0:S.gt;
   let wp=draftW?poly(g.pts):(S.white?trim(S.white,t):null);
-  if(gp&&gp.len<1)gp=null;if(wp&&wp.len<1)wp=null;
+  if(gp&&gp.len-distAt(gp,gt)<1)gp=null;if(wp&&wp.len<1)wp=null;
   /* beat clock: elapsed and remaining plan time in seconds */
   let el=0,rem=0;
-  if(gp){el=draftG?0:S.trav/SPEED;rem=gp.len/SPEED;}
+  if(gp){el=gt;rem=gp.dur-gt;}
   else if(wp){if(draftW||!S.white){el=0;rem=2;}else{el=S.standT;rem=Math.max(0.01,S.standDur-S.standT);}}
   const phase=(el/BEAT)%1;
-  beatStroke(gp,'#52d273',4,rem,phase);beatStroke(wp,'rgba(244,239,232,.92)',3,rem,phase);
+  if(gp)beatTimed(gp,gt,'#52d273',4);beatStroke(wp,'rgba(244,239,232,.92)',3,rem,phase);
   if(gp){const e=gp.pts[gp.pts.length-1];dot(e.x,e.y,5,'#52d273');}
   if(wp){const e=wp.pts[wp.pts.length-1];dot(e.x,e.y,4,'#f4efe8');}
   /* optional ghost: loops a preview of the remaining plan while paused */
   if(document.getElementById('ghost').checked&&S.paused&&!S.over&&(gp||wp)&&rem>0){
     const f=Math.min(1,((now/1000)%(rem+0.6))/rem);
-    const gx=gp?at(gp,f):{x:P.x,y:P.y};const gl=wp?at(wp,f):null;
+    const gs=gp?distAt(gp,gt+f*rem)/gp.len:0;const gx=gp?at(gp,gs):{x:P.x,y:P.y};const gl=wp?at(wp,f):null;
     let gf=P.face,gd=P.lookDist;
     if(gl){gd=Math.max(80,Math.hypot(gl.x-gx.x,gl.y-gx.y));gf=Math.atan2(gl.y-gx.y,gl.x-gx.x);}
-    else if(gp){const a=at(gp,Math.max(0,f-0.02)),b=at(gp,Math.min(1,f+0.02));if(Math.hypot(b.x-a.x,b.y-a.y)>0.1)gf=Math.atan2(b.y-a.y,b.x-a.x);}
+    else if(gp){const a=at(gp,Math.max(0,gs-0.02)),b=at(gp,Math.min(1,gs+0.02));if(Math.hypot(b.x-a.x,b.y-a.y)>0.1)gf=Math.atan2(b.y-a.y,b.x-a.x);}
     const gc=cone(gd);sector(gx.x,gx.y,gc.L,gf,gc.th);ctx.strokeStyle='rgba(191,240,204,.45)';ctx.lineWidth=1.2;ctx.setLineDash([5,5]);ctx.stroke();ctx.setLineDash([]);
     ctx.beginPath();ctx.arc(gx.x,gx.y,PR,0,6.283);ctx.strokeStyle='rgba(191,240,204,.8)';ctx.lineWidth=2;ctx.stroke();
     if(gl){ctx.beginPath();ctx.arc(gl.x,gl.y,5,0,6.283);ctx.stroke();}}
@@ -244,6 +257,8 @@ function draw(now){
   for(const p of S.parts){ctx.globalAlpha=clamp(p.life/p.max,0,1);ctx.fillStyle=p.col;ctx.fillRect(p.x-p.s/2,p.y-p.s/2,p.s,p.s);}ctx.globalAlpha=1;
   /* paused frame */
   if(S.paused&&!S.over){ctx.strokeStyle='rgba(244,239,232,.22)';ctx.lineWidth=3;ctx.strokeRect(14,14,W-28,H-28);}
+  if(S.warn&&now-S.warn<1500&&!S.white&&!S.over){ctx.globalAlpha=clamp((1500-(now-S.warn))/400,0,1);ctx.textAlign='center';ctx.fillStyle='#f4efe8';
+    ctx.font='600 26px "Barlow Condensed", Arial, sans-serif';ctx.fillText('Draw a white look line first',W/2,H/2);ctx.globalAlpha=1;}
   if(S.over){ctx.fillStyle='rgba(17,14,11,.72)';ctx.fillRect(0,0,W,H);ctx.textAlign='center';ctx.fillStyle=S.over==='won'?'#efe6da':'#e0362c';
     ctx.font='44px Rye, Georgia, serif';ctx.fillText(S.over==='won'?'Saloon cleared':'Shot down',W/2,H/2-10);
     ctx.fillStyle='#a3968a';ctx.font='600 22px "Barlow Condensed", Arial, sans-serif';ctx.fillText(`${S.clock.toFixed(1)}s of game time · press Reset`,W/2,H/2+30);}
